@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+
+# Local
+TODO.md
+build.log
