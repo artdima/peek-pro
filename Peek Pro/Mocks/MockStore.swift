@@ -76,6 +76,21 @@ final class MockStore {
         entriesBySession[id] = nil
     }
 
+    func disconnect(_ id: PeekSessionID) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        sessions[index].connection = .disconnected
+        sessions[index].disconnectedAt = .now
+    }
+
+    func dismissRejected(_ id: String) {
+        rejected.removeAll { $0.id == id }
+    }
+
+    /// Stands in for opening a `.peek` file until the reader exists (Phase 2).
+    func openDemoFiles() {
+        loadFiles()
+    }
+
     func regenerateToken() {
         let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
         let groups = (0..<3).map { _ in String((0..<4).map { _ in alphabet.randomElement()! }) }

@@ -18,7 +18,9 @@ struct SidebarView: View {
     @ViewBuilder
     private var panelContent: some View {
         switch model.panel {
-        case .sessions, .filters, .issues, .insights, .info:
+        case .sessions:
+            SessionsPanel()
+        case .filters, .issues, .insights, .info:
             ContentUnavailableView(model.panel.title, systemImage: model.panel.symbol)
         }
     }
@@ -54,6 +56,6 @@ struct NavigatorBar: View {
 
 #Preview {
     SidebarView()
-        .environment(AppModel(store: MockStore(scenario: .live, isLive: false)))
+        .environment(AppModel.preview(.live))
         .frame(width: 260, height: 500)
 }

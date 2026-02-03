@@ -24,13 +24,13 @@ struct MainWindow: View {
 
 #Preview("Live") {
     MainWindow()
-        .environment(AppModel(store: MockStore(scenario: .live, isLive: false)))
+        .environment(AppModel.preview(.live))
         .frame(width: 1280, height: 800)
 }
 
 #Preview("Waiting — Dark") {
     MainWindow()
-        .environment(AppModel(store: MockStore(scenario: .waiting, isLive: false)))
+        .environment(AppModel.preview(.waiting))
         .frame(width: 1280, height: 800)
         .preferredColorScheme(.dark)
 }

@@ -92,12 +92,12 @@ private struct RequestDetailPlaceholder: View {
 
 #Preview("Bottom") {
     ConsoleSplitView(placement: .bottom)
-        .environment(AppModel(store: MockStore(scenario: .live, isLive: false)))
+        .environment(AppModel.preview(.live))
         .frame(width: 900, height: 600)
 }
 
 #Preview("Right") {
     ConsoleSplitView(placement: .right)
-        .environment(AppModel(store: MockStore(scenario: .live, isLive: false)))
+        .environment(AppModel.preview(.live))
         .frame(width: 1100, height: 600)
 }

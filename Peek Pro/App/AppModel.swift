@@ -18,6 +18,31 @@ final class AppModel {
         selectedSessionID = store.sessionIDs.first
     }
 
+    func showInfo(_ id: PeekSessionID) {
+        selectedSessionID = id
+        panel = .info
+    }
+
+    func removeSession(_ id: PeekSessionID) {
+        store.removeSession(id)
+        keepSelectionValid()
+    }
+
+    func closeFile(_ id: PeekSessionID) {
+        store.closeFile(id)
+        keepSelectionValid()
+    }
+
+    func openDemoFiles() {
+        store.openDemoFiles()
+        selectedSessionID = store.files.first?.id
+    }
+
+    private func keepSelectionValid() {
+        if let id = selectedSessionID, store.sessionIDs.contains(id) { return }
+        selectedSessionID = store.sessionIDs.first
+    }
+
     var selectedEntries: [PeekEntry] {
         selectedSessionID.map { store.entries(in: $0) } ?? []
     }
