@@ -77,7 +77,7 @@ private struct ConsolePlaceholder: View {
         ContentUnavailableView {
             Label("Requests", systemImage: "list.bullet.rectangle")
         } description: {
-            Text("\(model.selectedEntries.count) requests in \(model.windowTitle)")
+            Text("\(model.filteredEntries.count) of \(model.selectedEntries.count) requests in \(model.windowTitle)")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

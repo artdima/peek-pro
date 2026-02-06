@@ -9,7 +9,7 @@ struct SidebarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    NavigatorBar(selection: $model.panel)
+                    NavigatorBar(selection: $model.panel, badges: [.filters: model.filter.activeCount])
                     Divider()
                 }
             }
@@ -20,7 +20,9 @@ struct SidebarView: View {
         switch model.panel {
         case .sessions:
             SessionsPanel()
-        case .filters, .issues, .insights, .info:
+        case .filters:
+            FiltersPanel()
+        case .issues, .insights, .info:
             ContentUnavailableView(model.panel.title, systemImage: model.panel.symbol)
         }
     }
@@ -28,6 +30,7 @@ struct SidebarView: View {
 
 struct NavigatorBar: View {
     @Binding var selection: SidebarPanel
+    var badges: [SidebarPanel: Int] = [:]
 
     var body: some View {
         HStack(spacing: 2) {
@@ -38,6 +41,17 @@ struct NavigatorBar: View {
                     Image(systemName: panel.symbol)
                         .symbolVariant(selection == panel ? .fill : .none)
                         .foregroundStyle(selection == panel ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                        .overlay(alignment: .topTrailing) {
+                            if let count = badges[panel], count > 0 {
+                                Text(count, format: .number)
+                                    .font(.system(size: 9, weight: .bold).monospacedDigit())
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 4)
+                                    .frame(minWidth: 14, minHeight: 14)
+                                    .background(.tint, in: Capsule())
+                                    .offset(x: 9, y: -6)
+                            }
+                        }
                         .frame(maxWidth: .infinity, minHeight: 28)
                         .contentShape(Rectangle())
                 }

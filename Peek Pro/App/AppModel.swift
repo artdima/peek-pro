@@ -7,6 +7,7 @@ final class AppModel {
     let store: MockStore
     var panel: SidebarPanel = .sessions
     var selectedSessionID: PeekSessionID?
+    var filter = ConsoleFilter()
 
     init(store: MockStore = MockStore()) {
         self.store = store
@@ -45,6 +46,10 @@ final class AppModel {
 
     var selectedEntries: [PeekEntry] {
         selectedSessionID.map { store.entries(in: $0) } ?? []
+    }
+
+    var filteredEntries: [PeekEntry] {
+        filter.apply(selectedEntries)
     }
 
     var windowTitle: String {
