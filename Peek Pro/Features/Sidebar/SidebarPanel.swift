@@ -29,6 +29,10 @@ enum SidebarPanel: String, CaseIterable, Identifiable {
         }
     }
 
+    var badgeTint: Color {
+        self == .issues ? Color(.statusFailure) : .accentColor
+    }
+
     /// ⌘1…⌘5, as the navigators in Xcode.
     var shortcut: KeyEquivalent {
         KeyEquivalent(Character(String((Self.allCases.firstIndex(of: self) ?? 0) + 1)))

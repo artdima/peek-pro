@@ -6,7 +6,10 @@ import Observation
 final class AppModel {
     let store: MockStore
     var panel: SidebarPanel = .sessions
-    var selectedSessionID: PeekSessionID?
+    var selectedSessionID: PeekSessionID? {
+        didSet { if oldValue != selectedSessionID { selectedEntryIDs = [] } }
+    }
+    var selectedEntryIDs: Set<PeekId> = []
     var filter = ConsoleFilter()
 
     init(store: MockStore = MockStore()) {
@@ -50,6 +53,20 @@ final class AppModel {
 
     var filteredEntries: [PeekEntry] {
         filter.apply(selectedEntries)
+    }
+
+    var selectedEntry: PeekEntry? {
+        guard selectedEntryIDs.count == 1, let id = selectedEntryIDs.first else { return nil }
+        return selectedEntries.first { $0.id == id }
+    }
+
+    var issues: [ConsoleIssue] {
+        let dropped = selectedSessionID.flatMap { store.session($0) }?.droppedCount ?? 0
+        return ConsoleIssue.issues(in: selectedEntries, droppedCount: dropped)
+    }
+
+    func reveal(_ id: PeekId) {
+        selectedEntryIDs = [id]
     }
 
     var windowTitle: String {

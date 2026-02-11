@@ -84,9 +84,29 @@ private struct ConsolePlaceholder: View {
 }
 
 private struct RequestDetailPlaceholder: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
-        ContentUnavailableView("No Request Selected", systemImage: "network")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if let entry = model.selectedEntry {
+                VStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        StatusIcon(entry: entry)
+                        StatusLabel(entry: entry)
+                    }
+                    Text("\(entry.request.method) \(entry.request.uri.absoluteString)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+            } else {
+                ContentUnavailableView("No Request Selected", systemImage: "network")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

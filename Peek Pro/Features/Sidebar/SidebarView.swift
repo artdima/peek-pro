@@ -9,7 +9,10 @@ struct SidebarView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    NavigatorBar(selection: $model.panel, badges: [.filters: model.filter.activeCount])
+                    NavigatorBar(selection: $model.panel, badges: [
+                        .filters: model.filter.activeCount,
+                        .issues: model.issues.filter { $0.severity == .error }.count,
+                    ])
                     Divider()
                 }
             }
@@ -22,7 +25,9 @@ struct SidebarView: View {
             SessionsPanel()
         case .filters:
             FiltersPanel()
-        case .issues, .insights, .info:
+        case .issues:
+            IssuesPanel()
+        case .insights, .info:
             ContentUnavailableView(model.panel.title, systemImage: model.panel.symbol)
         }
     }
@@ -48,7 +53,7 @@ struct NavigatorBar: View {
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 4)
                                     .frame(minWidth: 14, minHeight: 14)
-                                    .background(.tint, in: Capsule())
+                                    .background(panel.badgeTint, in: Capsule())
                                     .offset(x: 9, y: -6)
                             }
                         }
