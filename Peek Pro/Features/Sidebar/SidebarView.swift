@@ -27,7 +27,9 @@ struct SidebarView: View {
             FiltersPanel()
         case .issues:
             IssuesPanel()
-        case .insights, .info:
+        case .insights:
+            InsightsPanel()
+        case .info:
             ContentUnavailableView(model.panel.title, systemImage: model.panel.symbol)
         }
     }
