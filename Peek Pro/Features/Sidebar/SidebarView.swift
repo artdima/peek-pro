@@ -30,7 +30,7 @@ struct SidebarView: View {
         case .insights:
             InsightsPanel()
         case .info:
-            ContentUnavailableView(model.panel.title, systemImage: model.panel.symbol)
+            InfoPanel()
         }
     }
 }
