@@ -11,6 +11,11 @@ final class AppModel {
     }
     var selectedEntryIDs: Set<PeekId> = []
     var filter = ConsoleFilter()
+    var searchText = ""
+    var isFollowing = true
+    var viewMode = ConsoleViewMode(rawValue: UserDefaults.standard.string(forKey: ConsoleViewMode.storageKey) ?? "") ?? .table {
+        didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: ConsoleViewMode.storageKey) }
+    }
 
     init(store: MockStore = MockStore()) {
         self.store = store
@@ -51,8 +56,16 @@ final class AppModel {
         selectedSessionID.map { store.entries(in: $0) } ?? []
     }
 
+    var selectedLiveSession: PeekLiveSession? {
+        selectedSessionID.flatMap { store.session($0) }
+    }
+
+    /// Matches the URL only; scopes for headers, bodies and errors come with the full search field.
     var filteredEntries: [PeekEntry] {
-        filter.apply(selectedEntries)
+        let filtered = filter.apply(selectedEntries)
+        let query = searchText.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return filtered }
+        return filtered.filter { $0.request.uri.absoluteString.localizedCaseInsensitiveContains(query) }
     }
 
     var selectedEntry: PeekEntry? {
