@@ -36,18 +36,18 @@ struct ConsoleSplitView: View {
         switch placement {
         case .bottom:
             ResizableSplit(axis: .vertical, fraction: $bottomFraction, minLeading: 160, minTrailing: 200) {
-                ConsolePlaceholder()
+                ConsoleContentView()
             } trailing: {
                 RequestDetailPlaceholder()
             }
         case .right:
             ResizableSplit(axis: .horizontal, fraction: $rightFraction, minLeading: 380, minTrailing: 340) {
-                ConsolePlaceholder()
+                ConsoleContentView()
             } trailing: {
                 RequestDetailPlaceholder()
             }
         case .hidden:
-            ConsolePlaceholder()
+            ConsoleContentView()
         }
     }
 }
@@ -67,19 +67,6 @@ struct DetailPlacementMenu: View {
             Label("Layout", systemImage: placement.symbol)
         }
         .help("Layout")
-    }
-}
-
-private struct ConsolePlaceholder: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        ContentUnavailableView {
-            Label("Requests", systemImage: "list.bullet.rectangle")
-        } description: {
-            Text("\(model.filteredEntries.count) of \(model.selectedEntries.count) requests in \(model.windowTitle)")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
