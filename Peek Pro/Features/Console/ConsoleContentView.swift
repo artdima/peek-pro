@@ -25,7 +25,7 @@ struct ConsoleContentView: View {
                 case .table:
                     ConsoleTableView(entries: entries)
                 case .list:
-                    ContentUnavailableView(ConsoleViewMode.list.title, systemImage: ConsoleViewMode.list.symbol)
+                    ConsoleListView(entries: entries)
                 }
             }
         }

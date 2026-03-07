@@ -45,6 +45,10 @@ struct ConsoleToolbar: ToolbarContent {
             .pickerStyle(.segmented)
             .help("Show requests as a table or a list")
 
+            if model.viewMode == .list {
+                ListGroupingMenu(grouping: $model.listGrouping)
+            }
+
             DetailPlacementMenu(placement: $detailPlacement)
 
             ExportMenu(hasEntries: !model.filteredEntries.isEmpty)

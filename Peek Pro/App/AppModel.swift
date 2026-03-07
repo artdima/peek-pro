@@ -16,6 +16,9 @@ final class AppModel {
     var viewMode = ConsoleViewMode(rawValue: UserDefaults.standard.string(forKey: ConsoleViewMode.storageKey) ?? "") ?? .table {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: ConsoleViewMode.storageKey) }
     }
+    var listGrouping = ConsoleListGrouping(rawValue: UserDefaults.standard.string(forKey: ConsoleListGrouping.storageKey) ?? "") ?? .status {
+        didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
+    }
 
     init(store: MockStore = MockStore()) {
         self.store = store
