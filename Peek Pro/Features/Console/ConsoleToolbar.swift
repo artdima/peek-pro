@@ -51,7 +51,7 @@ struct ConsoleToolbar: ToolbarContent {
 
             DetailPlacementMenu(placement: $detailPlacement)
 
-            ExportMenu(hasEntries: !model.filteredEntries.isEmpty)
+            ExportMenu(hasEntries: !model.visibleEntries.isEmpty)
         }
 
         ToolbarItem(placement: .primaryAction) {

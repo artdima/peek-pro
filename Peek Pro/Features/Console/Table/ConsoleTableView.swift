@@ -108,6 +108,10 @@ struct ConsoleTableView: View {
                 guard model.isFollowing, let last else { return }
                 withAnimation { proxy.scrollTo(last, anchor: .bottom) }
             }
+            .onChange(of: model.scrollToLatestRequest) {
+                guard let last = rows.last?.id else { return }
+                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+            }
         }
     }
 }
@@ -134,22 +138,28 @@ private struct CodeCell: View {
 
 private struct URLCell: View {
     let entry: PeekEntry
+    @Environment(\.searchHighlight) private var highlight
 
     var body: some View {
+        Text(attributedURL)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .help(entry.request.uri.absoluteString)
+    }
+
+    private var attributedURL: AttributedString {
         let request = entry.request
-        let origin = "\(request.uri.scheme ?? "https")://\(request.host)"
-        let rest = request.path + (request.query.map { "?\($0)" } ?? "")
-        Group {
-            if entry.isError {
-                Text(origin + rest)
-                    .foregroundStyle(Color(.statusFailure))
-            } else {
-                Text("\(Text(origin).foregroundStyle(.secondary))\(Text(rest))")
-            }
+        var origin = AttributedString("\(request.uri.scheme ?? "https")://\(request.host)")
+        var rest = AttributedString(request.path + (request.query.map { "?\($0)" } ?? ""))
+        if entry.isError {
+            origin.foregroundColor = Color(.statusFailure)
+            rest.foregroundColor = Color(.statusFailure)
+        } else {
+            origin.foregroundColor = Color.secondary
         }
-        .lineLimit(1)
-        .truncationMode(.middle)
-        .help(request.uri.absoluteString)
+        var url = origin + rest
+        url.highlight(highlight)
+        return url
     }
 }
 

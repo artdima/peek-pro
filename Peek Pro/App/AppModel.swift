@@ -7,12 +7,24 @@ final class AppModel {
     let store: MockStore
     var panel: SidebarPanel = .sessions
     var selectedSessionID: PeekSessionID? {
-        didSet { if oldValue != selectedSessionID { selectedEntryIDs = [] } }
+        didSet {
+            guard oldValue != selectedSessionID else { return }
+            selectedEntryIDs = []
+            if !isFollowing { unseenBaseline = selectedEntries.count }
+        }
     }
     var selectedEntryIDs: Set<PeekId> = []
     var filter = ConsoleFilter()
     var searchText = ""
-    var isFollowing = true
+    var searchScope = ConsoleSearchScope.all
+    var quickMode = ConsoleQuickMode.all
+    var isFollowing = true {
+        didSet { unseenBaseline = isFollowing ? nil : selectedEntries.count }
+    }
+    /// How many requests the session had when Follow was switched off.
+    private(set) var unseenBaseline: Int?
+    /// Bumped to ask the list to scroll to the newest request.
+    private(set) var scrollToLatestRequest = 0
     var viewMode = ConsoleViewMode(rawValue: UserDefaults.standard.string(forKey: ConsoleViewMode.storageKey) ?? "") ?? .table {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: ConsoleViewMode.storageKey) }
     }
@@ -63,12 +75,41 @@ final class AppModel {
         selectedSessionID.flatMap { store.session($0) }
     }
 
-    /// Matches the URL only; scopes for headers, bodies and errors come with the full search field.
+    var search: ConsoleSearch {
+        ConsoleSearch(text: searchText, scope: searchScope)
+    }
+
+    var urlHighlight: String {
+        searchScope == .all || searchScope == .url ? search.query : ""
+    }
+
+    /// Filters and search; the quick modes count within this.
     var filteredEntries: [PeekEntry] {
+        let search = search
         let filtered = filter.apply(selectedEntries)
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return filtered }
-        return filtered.filter { $0.request.uri.absoluteString.localizedCaseInsensitiveContains(query) }
+        return search.query.isEmpty ? filtered : filtered.filter { search.matches($0) }
+    }
+
+    var visibleEntries: [PeekEntry] {
+        let entries = filteredEntries
+        return quickMode == .all ? entries : entries.filter { quickMode.matches($0) }
+    }
+
+    var unseenCount: Int {
+        guard let unseenBaseline else { return 0 }
+        return max(0, selectedEntries.count - unseenBaseline)
+    }
+
+    func showLatest() {
+        isFollowing = true
+        scrollToLatestRequest += 1
+    }
+
+    func clearSelectedSession() {
+        guard let id = selectedSessionID else { return }
+        store.clear(id)
+        selectedEntryIDs = []
+        if !isFollowing { unseenBaseline = 0 }
     }
 
     var selectedEntry: PeekEntry? {

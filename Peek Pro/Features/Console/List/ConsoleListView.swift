@@ -35,6 +35,10 @@ struct ConsoleListView: View {
                 guard model.isFollowing, let last else { return }
                 withAnimation { proxy.scrollTo(last, anchor: .bottom) }
             }
+            .onChange(of: model.scrollToLatestRequest) {
+                guard let last = entries.last?.id else { return }
+                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+            }
         }
     }
 
@@ -49,6 +53,7 @@ struct ConsoleListView: View {
 
 struct ConsoleListRow: View {
     let entry: PeekEntry
+    @Environment(\.searchHighlight) private var highlight
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -72,13 +77,19 @@ struct ConsoleListRow: View {
                     .foregroundStyle(.secondary)
             }
             .font(.callout)
-            Text(entry.request.uri.absoluteString)
+            Text(attributedURL)
                 .foregroundStyle(entry.isError ? Color(.statusFailure) : Color.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
         .padding(.vertical, 3)
         .accessibilityElement(children: .combine)
+    }
+
+    private var attributedURL: AttributedString {
+        var url = AttributedString(entry.request.uri.absoluteString)
+        url.highlight(highlight)
+        return url
     }
 
     private var metrics: String {

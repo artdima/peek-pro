@@ -83,7 +83,7 @@ struct FiltersPanel: View {
 
     private var summary: String {
         let total = model.selectedEntries.count
-        let shown = model.filteredEntries.count
+        let shown = model.visibleEntries.count
         return shown == total ? "\(total) requests" : "\(shown) of \(total) requests"
     }
 

@@ -21,12 +21,17 @@ struct MainWindow: View {
             ConsoleToolbar(model: model, detailPlacement: $detailPlacement, isConfirmingClear: $isConfirmingClear)
         }
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search")
+        .searchScopes($model.searchScope) {
+            ForEach(ConsoleSearchScope.allCases) { scope in
+                Text(scope.title).tag(scope)
+            }
+        }
         .confirmationDialog(
             "Clear all requests from \(model.windowTitle)?",
             isPresented: $isConfirmingClear
         ) {
             Button("Clear", role: .destructive) {
-                if let id = model.selectedSessionID { model.store.clear(id) }
+                model.clearSelectedSession()
             }
         } message: {
             Text("New requests from the device keep arriving.")
