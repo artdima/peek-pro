@@ -7,7 +7,7 @@ struct QuickModeBar: View {
         let entries = model.filteredEntries
         HStack(spacing: 2) {
             ForEach(ConsoleQuickMode.allCases) { mode in
-                QuickModePill(title: mode.title, count: mode.count(in: entries), isSelected: model.quickMode == mode) {
+                PillButton(title: mode.title, count: mode.count(in: entries), isSelected: model.quickMode == mode) {
                     model.quickMode = mode
                 }
             }
@@ -16,32 +16,6 @@ struct QuickModeBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-    }
-}
-
-private struct QuickModePill: View {
-    let title: String
-    let count: Int
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(title)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                Text("(\(count))")
-                    .monospacedDigit()
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.8) : Color.secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .background(isSelected ? Color.accentColor : Color.clear, in: Capsule())
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
