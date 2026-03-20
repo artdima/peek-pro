@@ -31,8 +31,15 @@ struct EntryDetailView: View {
         VStack(spacing: 0) {
             DetailHeader(tabs: tabs, selection: tab) { selectedTab = $0 }
             Divider()
-            DetailTabContent(entry: entry, tab: tab)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Group {
+                switch tab {
+                case .summary:
+                    SummaryTab(entry: entry) { selectedTab = $0 }
+                default:
+                    DetailTabContent(entry: entry, tab: tab)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
