@@ -35,6 +35,10 @@ struct EntryDetailView: View {
                 switch tab {
                 case .summary:
                     SummaryTab(entry: entry) { selectedTab = $0 }
+                case .request:
+                    BodyTab(entry: entry, side: .request)
+                case .response:
+                    BodyTab(entry: entry, side: .response)
                 case .headers:
                     HeadersTab(entry: entry)
                 case .cookies:
