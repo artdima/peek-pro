@@ -110,6 +110,30 @@ enum FixtureBodies {
     }
     """
 
+    static let remoteConfig = """
+    {
+      "api": {
+        "base_url": "https://api.acme.dev",
+        "timeout_ms": 30000,
+        "retries": 2
+      },
+      "checkout": {
+        "providers": ["card", "apple_pay", "google_pay"],
+        "min_order": { "amount": 1500, "currency": "EUR" },
+        "free_shipping_from": { "amount": 5000, "currency": "EUR" }
+      },
+      "images": {
+        "cdn": "https://cdn.acme.dev",
+        "sizes": [160, 320, 640, 1280]
+      },
+      "support": {
+        "email": "help@acme.dev",
+        "chat_enabled": true,
+        "hours": "09:00-21:00 WET"
+      }
+    }
+    """
+
     static let paymentRequest = """
     {
       "order_id": "ord_8Hq2",

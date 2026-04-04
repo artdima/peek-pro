@@ -10,12 +10,14 @@ final class MockStore {
     private(set) var files: [PeekSessionFile] = []
     private(set) var rejected: [PeekRejectedConnection] = []
     private(set) var paused: Set<PeekSessionID> = []
+    private(set) var bodyLoads: [PeekBodyLoadKey: PeekBodyLoadState] = [:]
     private var entriesBySession: [PeekSessionID: [PeekEntry]] = [:]
 
     @ObservationIgnored private let isLive: Bool
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var pendingTemplates: [PeekId: PeekEntry] = [:]
     @ObservationIgnored private var tickCount = 0
+    @ObservationIgnored private var failedLoads: Set<PeekBodyLoadKey> = []
 
     init(scenario: MockScenario = .live, isLive: Bool = true) {
         self.scenario = scenario
@@ -91,6 +93,42 @@ final class MockStore {
         loadFiles()
     }
 
+    /// Pretends to fetch a body from the device; the map tile fails once so Retry can be seen.
+    func loadBody(_ key: PeekBodyLoadKey, in sessionID: PeekSessionID) {
+        guard bodyLoads[key] != .loading else { return }
+        bodyLoads[key] = .loading
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let self, self.bodyLoads[key] == .loading else { return }
+            if key.entryID.value.hasSuffix("f25"), !self.failedLoads.contains(key) {
+                self.failedLoads.insert(key)
+                self.bodyLoads[key] = .failed("The device didn't answer within 10 seconds.")
+                return
+            }
+            self.bodyLoads[key] = nil
+            self.fillBody(key, in: sessionID)
+        }
+    }
+
+    private func fillBody(_ key: PeekBodyLoadKey, in sessionID: PeekSessionID) {
+        guard key.side == .response,
+              let index = entriesBySession[sessionID]?.firstIndex(where: { $0.id == key.entryID }),
+              let entry = entriesBySession[sessionID]?[index],
+              let response = entry.response,
+              case .remote(_, let type, _) = response.body
+        else { return }
+        let body: PeekBody = type?.isImage == true
+            ? .bytes(FixtureBodies.avatarPNG, contentType: type)
+            : .json(FixtureBodies.remoteConfig)
+        entriesBySession[sessionID]?[index].response = PeekResponse(
+            statusCode: response.statusCode,
+            statusMessage: response.statusMessage,
+            headers: response.headers,
+            body: body,
+            redirects: response.redirects
+        )
+    }
+
     func regenerateToken() {
         let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
         let groups = (0..<3).map { _ in String((0..<4).map { _ in alphabet.randomElement()! }) }
@@ -106,6 +144,8 @@ final class MockStore {
         files = []
         rejected = []
         paused = []
+        bodyLoads = [:]
+        failedLoads = []
         entriesBySession = [:]
 
         switch scenario {

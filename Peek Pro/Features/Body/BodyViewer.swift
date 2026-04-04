@@ -43,34 +43,93 @@ extension PeekBody {
     }
 }
 
-/// A body with its header bar: type and size, Raw / Tree for JSON, wrap, find, copy and save.
+/// How a captured body is best shown.
+private enum BodyKind {
+    case json(String)
+    case formEncoded(String)
+    case text(String)
+    case image(Data)
+    case binary(Data)
+    case form([PeekFormField], [PeekFormFile])
+
+    init?(_ payload: PeekBody) {
+        switch payload {
+        case .form(let fields, let files, _):
+            self = .form(fields, files)
+            return
+        case .bytes(let data, let type, _) where type?.isImage == true:
+            self = .image(data)
+            return
+        default:
+            break
+        }
+        if let text = payload.displayText {
+            if payload.looksLikeJSON {
+                self = .json(text)
+            } else if payload.contentType?.isFormUrlEncoded == true {
+                self = .formEncoded(text)
+            } else {
+                self = .text(text)
+            }
+        } else if case .bytes(let data, _, _) = payload {
+            self = .binary(data)
+        } else {
+            return nil
+        }
+    }
+}
+
+/// A body with its header bar: type and size, the view switch, wrap, find, copy and save.
 struct BodyViewer: View {
     let payload: PeekBody
     let baseName: String
+    var loadKey: PeekBodyLoadKey?
 
     @AppStorage("body.jsonMode") private var jsonMode: JSONViewMode = .raw
+    @AppStorage("body.formMode") private var formMode: FormViewMode = .fields
     @AppStorage("body.wraps") private var wraps = false
     @State private var proxy = CodeTextProxy()
 
     var body: some View {
-        if payload.isEmpty {
-            ContentUnavailableView("No Body", systemImage: "doc",
-                                   description: Text("This message was sent without a body."))
-        } else {
-            VStack(spacing: 0) {
-                header
-                Divider()
-                content
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        switch payload {
+        case .unavailable(let reason, let type, let size):
+            UnavailableBodyView(reason: reason, contentType: type, size: size)
+        case .remote(let size, let type, _):
+            RemoteBodyView(size: size, contentType: type, loadKey: loadKey)
+        default:
+            if payload.isEmpty {
+                ContentUnavailableView("No Body", systemImage: "doc",
+                                       description: Text("This message was sent without a body."))
+            } else if let kind = BodyKind(payload) {
+                VStack(spacing: 0) {
+                    header(kind)
+                    Divider()
+                    ForEach(notices(kind), id: \.self) { notice in
+                        TruncationBanner(text: notice)
+                        Divider()
+                    }
+                    content(kind)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
     }
 
-    private var isTree: Bool {
-        payload.looksLikeJSON && jsonMode == .tree
+    private func showsCode(_ kind: BodyKind) -> Bool {
+        switch kind {
+        case .json: jsonMode == .raw
+        case .formEncoded: formMode == .raw
+        case .text, .binary: true
+        case .image, .form: false
+        }
     }
 
-    private var header: some View {
+    private func canWrap(_ kind: BodyKind) -> Bool {
+        if case .binary = kind { return false }
+        return true
+    }
+
+    private func header(_ kind: BodyKind) -> some View {
         HStack(spacing: 12) {
             Text(payload.contentType?.mimeType ?? "No content type")
                 .font(.callout.monospaced())
@@ -81,17 +140,29 @@ struct BodyViewer: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            if payload.looksLikeJSON {
+            switch kind {
+            case .json:
                 Picker("Format", selection: $jsonMode) {
                     ForEach(JSONViewMode.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
+            case .formEncoded:
+                Picker("Format", selection: $formMode) {
+                    ForEach(FormViewMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+            default:
+                EmptyView()
             }
-            if payload.displayText != nil && !isTree {
-                Toggle("Wrap Lines", isOn: $wraps)
-                    .toggleStyle(.checkbox)
+            if showsCode(kind) {
+                if canWrap(kind) {
+                    Toggle("Wrap Lines", isOn: $wraps)
+                        .toggleStyle(.checkbox)
+                }
                 Button {
                     proxy.showFind()
                 } label: {
@@ -101,6 +172,8 @@ struct BodyViewer: View {
             }
             if let text = payload.displayText {
                 CopyButton(text: text, title: "Copy Body")
+            } else if let data = payload.rawData {
+                CopyButton(text: data.base64EncodedString(), title: "Copy as Base64")
             }
             if let data = payload.rawData {
                 Button {
@@ -118,16 +191,40 @@ struct BodyViewer: View {
     }
 
     @ViewBuilder
-    private var content: some View {
-        if let text = payload.displayText {
-            if isTree {
+    private func content(_ kind: BodyKind) -> some View {
+        switch kind {
+        case .json(let text):
+            if jsonMode == .tree {
                 JSONTreeView(text: text)
             } else {
-                CodeTextView(text: text, highlightsJSON: payload.looksLikeJSON, wraps: wraps, proxy: proxy)
+                CodeTextView(text: text, highlightsJSON: true, wraps: wraps, proxy: proxy)
             }
-        } else {
-            BodyKindPlaceholder(payload: payload)
+        case .formEncoded(let text):
+            if formMode == .fields {
+                FormBodyView(fields: FormURLEncoding.fields(in: text))
+            } else {
+                CodeTextView(text: text, wraps: wraps, proxy: proxy)
+            }
+        case .text(let text):
+            CodeTextView(text: text, wraps: wraps, proxy: proxy)
+        case .binary(let data):
+            CodeTextView(text: HexDump.format(data), wraps: false, proxy: proxy)
+        case .image(let data):
+            ImageBodyView(data: data)
+        case .form(let fields, let files):
+            FormBodyView(fields: fields.map { (name: $0.name, value: $0.value) }, files: files)
         }
+    }
+
+    private func notices(_ kind: BodyKind) -> [String] {
+        var result: [String] = []
+        if payload.isTruncated, let size = payload.size, let captured = payload.capturedSize {
+            result.append("Showing the first \(PeekFormat.bytes(captured)) of \(PeekFormat.bytes(size)) — Peek keeps only the start of large bodies.")
+        }
+        if case .binary(let data) = kind, data.count > HexDump.limit {
+            result.append("The hex view shows the first \(PeekFormat.bytes(HexDump.limit)); save the body to see all of it.")
+        }
+        return result
     }
 
     private var sizeText: String? {
@@ -153,45 +250,5 @@ struct BodyViewer: View {
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         try? data.write(to: url)
-    }
-}
-
-/// What the body is, for kinds that get their own viewers next.
-private struct BodyKindPlaceholder: View {
-    let payload: PeekBody
-
-    var body: some View {
-        ContentUnavailableView(title, systemImage: symbol, description: Text(detail))
-    }
-
-    private var title: String {
-        switch payload {
-        case .bytes(_, let type, _): type?.isImage == true ? "Image" : "Binary Body"
-        case .form: "Form"
-        case .unavailable: "Body Not Available"
-        case .remote: "Body Is on the Device"
-        default: "Body"
-        }
-    }
-
-    private var symbol: String {
-        switch payload {
-        case .bytes(_, let type, _): type?.isImage == true ? "photo" : "doc.zipper"
-        case .form: "list.bullet.rectangle"
-        case .unavailable: "eye.slash"
-        case .remote: "iphone.and.arrow.forward"
-        default: "doc"
-        }
-    }
-
-    private var detail: String {
-        switch payload {
-        case .form(let fields, let files, _):
-            "\(fields.count) fields, \(files.count) files"
-        case .unavailable(let reason, _, _):
-            reason.title
-        default:
-            payload.size.map { PeekFormat.bytes($0) } ?? ""
-        }
     }
 }

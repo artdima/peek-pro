@@ -122,6 +122,27 @@ final class AppModel {
         return ConsoleIssue.issues(in: selectedEntries, droppedCount: dropped)
     }
 
+    enum RemoteBodyAvailability {
+        case available
+        case offline
+        case notInFile
+    }
+
+    var remoteBodyAvailability: RemoteBodyAvailability {
+        guard let id = selectedSessionID else { return .notInFile }
+        if store.file(id) != nil { return .notInFile }
+        return store.session(id)?.connection == .disconnected ? .offline : .available
+    }
+
+    var selectedDeviceName: String {
+        selectedSessionID.flatMap { store.info(for: $0) }?.device.name ?? "the device"
+    }
+
+    func loadBody(_ key: PeekBodyLoadKey) {
+        guard let id = selectedSessionID else { return }
+        store.loadBody(key, in: id)
+    }
+
     func reveal(_ id: PeekId) {
         selectedEntryIDs = [id]
     }
