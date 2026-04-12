@@ -43,8 +43,10 @@ struct EntryDetailView: View {
                     HeadersTab(entry: entry)
                 case .cookies:
                     CookiesTab(entry: entry)
-                default:
-                    DetailTabContent(entry: entry, tab: tab)
+                case .error:
+                    ErrorTab(entry: entry) { selectedTab = $0 }
+                case .curl:
+                    CurlTab(entry: entry)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,32 +95,6 @@ private struct DetailHeader: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-    }
-}
-
-/// Stand-ins until each tab gets its own view.
-private struct DetailTabContent: View {
-    let entry: PeekEntry
-    let tab: DetailTab
-
-    var body: some View {
-        ContentUnavailableView {
-            Label(tab.title, systemImage: tab.symbol)
-        } description: {
-            VStack(spacing: 6) {
-                HStack(spacing: 6) {
-                    StatusIcon(entry: entry)
-                    StatusLabel(entry: entry)
-                    if let duration = entry.duration {
-                        Text(PeekFormat.duration(duration))
-                            .monospacedDigit()
-                    }
-                }
-                Text("\(entry.request.method) \(entry.request.uri.absoluteString)")
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-            }
-        }
     }
 }
 
