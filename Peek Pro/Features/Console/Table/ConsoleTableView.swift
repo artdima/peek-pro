@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ConsoleTableView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let entries: [PeekEntry]
 
     @State private var sortOrder = [KeyPathComparator(\PeekEntry.startedAt)]
@@ -101,9 +102,7 @@ struct ConsoleTableView: View {
                 }
             }
             .tableStyle(.inset(alternatesRowBackgrounds: true))
-            .contextMenu(forSelectionType: PeekId.self) { ids in
-                EntryContextMenu(ids: ids)
-            }
+            .opensEntryWindows(model: model, openWindow: openWindow)
             .onChange(of: rows.last?.id) { _, last in
                 guard model.isFollowing, let last else { return }
                 withAnimation { proxy.scrollTo(last, anchor: .bottom) }
@@ -190,6 +189,7 @@ private struct SizeCell: View {
 
 struct EntryContextMenu: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let ids: Set<PeekId>
 
     var body: some View {
@@ -212,8 +212,9 @@ struct EntryContextMenu: View {
                 }
             }
             Divider()
-            Button("Open in New Window") {}
-                .disabled(true)
+            Button(entries.count == 1 ? "Open in New Window" : "Open \(min(entries.count, OpenEntryWindowsAction.limit)) in New Windows") {
+                OpenEntryWindowsAction(model: model, openWindow: openWindow)(entries.map(\.id))
+            }
             Button(entries.count == 1 ? "Export as HAR…" : "Export \(entries.count) as HAR…") {}
                 .disabled(true)
         }

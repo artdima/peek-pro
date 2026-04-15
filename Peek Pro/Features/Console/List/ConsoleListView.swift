@@ -3,6 +3,7 @@ import SwiftUI
 /// Pulse Pro's list mode: two-line rows grouped into sections.
 struct ConsoleListView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let entries: [PeekEntry]
 
     var body: some View {
@@ -28,9 +29,7 @@ struct ConsoleListView: View {
                 }
             }
             .listStyle(.inset)
-            .contextMenu(forSelectionType: PeekId.self) { ids in
-                EntryContextMenu(ids: ids)
-            }
+            .opensEntryWindows(model: model, openWindow: openWindow)
             .onChange(of: entries.last?.id) { _, last in
                 guard model.isFollowing, let last else { return }
                 withAnimation { proxy.scrollTo(last, anchor: .bottom) }

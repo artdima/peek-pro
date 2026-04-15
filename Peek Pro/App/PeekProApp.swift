@@ -10,6 +10,15 @@ struct PeekProApp: App {
                 .environment(model)
         }
         .defaultSize(width: 1440, height: 900)
+
+        WindowGroup("Request", id: "entry", for: EntryWindowID.self) { $windowID in
+            if let windowID {
+                EntryWindow(windowID: windowID)
+                    .environment(model)
+            }
+        }
+        .defaultSize(width: 1000, height: 720)
+        .commandsRemoved()
         .commands {
             SidebarCommands()
             ToolbarCommands()

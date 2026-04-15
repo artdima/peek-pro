@@ -22,14 +22,20 @@ struct RequestDetailView: View {
 
 struct EntryDetailView: View {
     let entry: PeekEntry
+    /// In its own window there is no split to rearrange and nothing to detach.
+    var isStandalone = false
 
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     @SceneStorage("detailTab") private var selectedTab: DetailTab = .summary
 
     var body: some View {
         let tabs = DetailTab.available(for: entry)
         let tab = tabs.contains(selectedTab) ? selectedTab : .summary
         VStack(spacing: 0) {
-            DetailHeader(tabs: tabs, selection: tab) { selectedTab = $0 }
+            DetailHeader(tabs: tabs, selection: tab, showsWindowControls: !isStandalone, select: { selectedTab = $0 }) {
+                OpenEntryWindowsAction(model: model, openWindow: openWindow)([entry.id])
+            }
             Divider()
             Group {
                 switch tab {
@@ -57,7 +63,9 @@ struct EntryDetailView: View {
 private struct DetailHeader: View {
     let tabs: [DetailTab]
     let selection: DetailTab
+    let showsWindowControls: Bool
     let select: (DetailTab) -> Void
+    let openInWindow: () -> Void
 
     @AppStorage(DetailPlacement.storageKey) private var placement: DetailPlacement = .bottom
 
@@ -67,34 +75,38 @@ private struct DetailHeader: View {
                 PillButton(title: tab.title, isSelected: tab == selection) { select(tab) }
             }
             Spacer(minLength: 12)
-            HStack(spacing: 10) {
-                Button {
-                } label: {
-                    Label("Open in New Window", systemImage: "macwindow.on.rectangle")
-                }
-                .disabled(true)
-                .help("Open in a new window")
-
-                Button {
-                    placement = placement == .right ? .bottom : .right
-                } label: {
-                    Label(placement == .right ? "Details at Bottom" : "Details on Right",
-                          systemImage: placement == .right ? DetailPlacement.bottom.symbol : DetailPlacement.right.symbol)
-                }
-                .help(placement == .right ? "Move details to the bottom" : "Move details to the right")
-
-                Button {
-                    placement = .hidden
-                } label: {
-                    Label("Hide Details", systemImage: "xmark")
-                }
-                .help("Hide details")
+            if showsWindowControls {
+                windowControls
             }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+
+    private var windowControls: some View {
+        HStack(spacing: 10) {
+            Button(action: openInWindow) {
+                Label("Open in New Window", systemImage: "macwindow.on.rectangle")
+            }
+            .help("Open in a new window")
+
+            Button {
+                placement = placement == .right ? .bottom : .right
+            } label: {
+                Label(placement == .right ? "Details at Bottom" : "Details on Right",
+                      systemImage: placement == .right ? DetailPlacement.bottom.symbol : DetailPlacement.right.symbol)
+            }
+            .help(placement == .right ? "Move details to the bottom" : "Move details to the right")
+
+            Button {
+                placement = .hidden
+            } label: {
+                Label("Hide Details", systemImage: "xmark")
+            }
+            .help("Hide details")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
     }
 }
 
