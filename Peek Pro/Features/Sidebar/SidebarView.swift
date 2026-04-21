@@ -63,8 +63,7 @@ struct NavigatorBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(panel.title)
-                .keyboardShortcut(panel.shortcut, modifiers: .command)
+                .help("\(panel.title) (⌘\(String(panel.shortcut.character)))")
                 .accessibilityLabel(panel.title)
                 .accessibilityAddTraits(selection == panel ? .isSelected : [])
             }

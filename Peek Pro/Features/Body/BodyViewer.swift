@@ -85,9 +85,10 @@ struct BodyViewer: View {
     let baseName: String
     var loadKey: PeekBodyLoadKey?
 
-    @AppStorage("body.jsonMode") private var jsonMode: JSONViewMode = .raw
+    @AppStorage(SettingsKey.jsonMode) private var jsonMode: JSONViewMode = .raw
+    @AppStorage(SettingsKey.bodyFontSize) private var fontSize = 12.0
     @AppStorage("body.formMode") private var formMode: FormViewMode = .fields
-    @AppStorage("body.wraps") private var wraps = false
+    @AppStorage(SettingsKey.wraps) private var wraps = false
     @State private var proxy = CodeTextProxy()
 
     var body: some View {
@@ -197,18 +198,18 @@ struct BodyViewer: View {
             if jsonMode == .tree {
                 JSONTreeView(text: text)
             } else {
-                CodeTextView(text: text, highlightsJSON: true, wraps: wraps, proxy: proxy)
+                CodeTextView(text: text, highlightsJSON: true, wraps: wraps, fontSize: fontSize, proxy: proxy)
             }
         case .formEncoded(let text):
             if formMode == .fields {
                 FormBodyView(fields: FormURLEncoding.fields(in: text))
             } else {
-                CodeTextView(text: text, wraps: wraps, proxy: proxy)
+                CodeTextView(text: text, wraps: wraps, fontSize: fontSize, proxy: proxy)
             }
         case .text(let text):
-            CodeTextView(text: text, wraps: wraps, proxy: proxy)
+            CodeTextView(text: text, wraps: wraps, fontSize: fontSize, proxy: proxy)
         case .binary(let data):
-            CodeTextView(text: HexDump.format(data), wraps: false, proxy: proxy)
+            CodeTextView(text: HexDump.format(data), wraps: false, fontSize: fontSize, proxy: proxy)
         case .image(let data):
             ImageBodyView(data: data)
         case .form(let fields, let files):

@@ -31,6 +31,7 @@ struct CodeTextView: NSViewRepresentable {
     let text: String
     var highlightsJSON = false
     var wraps = false
+    var fontSize = 12.0
     var proxy: CodeTextProxy?
 
     func makeCoordinator() -> Coordinator {
@@ -78,8 +79,8 @@ struct CodeTextView: NSViewRepresentable {
             coordinator.wraps = wraps
             Self.apply(wraps: wraps, textView: textView, scrollView: scrollView)
         }
-        if coordinator.text != text || coordinator.highlightsJSON != highlightsJSON {
-            coordinator.load(text, highlightsJSON: highlightsJSON)
+        if coordinator.text != text || coordinator.highlightsJSON != highlightsJSON || coordinator.fontSize != fontSize {
+            coordinator.load(text, highlightsJSON: highlightsJSON, fontSize: fontSize)
         }
     }
 
@@ -109,15 +110,18 @@ struct CodeTextView: NSViewRepresentable {
         var text: String?
         var highlightsJSON = false
         var wraps: Bool?
+        var fontSize = 12.0
         var highlightTask: Task<Void, Never>?
 
         /// Plain text goes in at once; colors follow when the background scan finishes.
-        func load(_ text: String, highlightsJSON: Bool) {
+        func load(_ text: String, highlightsJSON: Bool, fontSize: Double) {
             self.text = text
             self.highlightsJSON = highlightsJSON
+            self.fontSize = fontSize
             highlightTask?.cancel()
             guard let textView, let storage = textView.textStorage else { return }
-            let attributes: [NSAttributedString.Key: Any] = [.font: CodeTextStyle.font, .foregroundColor: NSColor.labelColor]
+            let font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
             storage.setAttributedString(NSAttributedString(string: text, attributes: attributes))
             ruler?.reload(text)
             textView.scroll(.zero)

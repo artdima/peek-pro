@@ -129,6 +129,26 @@ final class MockStore {
         )
     }
 
+    /// The fixture server with the port and Bonjour name from Settings.
+    private static func configuredServer() -> PeekServerState {
+        var server = FixtureSessions.server
+        let defaults = UserDefaults.standard
+        let port = defaults.integer(forKey: SettingsKey.port)
+        if port > 0 { server.port = port }
+        if defaults.object(forKey: SettingsKey.bonjourEnabled) as? Bool == false {
+            server.bonjourName = nil
+        } else if let name = defaults.string(forKey: SettingsKey.bonjourName), !name.isEmpty {
+            server.bonjourName = name
+        }
+        return server
+    }
+
+    func applyServerSettings() {
+        let configured = Self.configuredServer()
+        server.port = configured.port
+        server.bonjourName = configured.bonjourName
+    }
+
     func regenerateToken() {
         let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
         let groups = (0..<3).map { _ in String((0..<4).map { _ in alphabet.randomElement()! }) }
@@ -139,7 +159,7 @@ final class MockStore {
         ticker?.cancel()
         ticker = nil
         pendingTemplates = [:]
-        server = FixtureSessions.server
+        server = Self.configuredServer()
         sessions = []
         files = []
         rejected = []

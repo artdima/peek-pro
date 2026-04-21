@@ -3,7 +3,6 @@ import SwiftUI
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @AppStorage(DetailPlacement.storageKey) private var detailPlacement: DetailPlacement = .bottom
-    @State private var isConfirmingClear = false
 
     var body: some View {
         @Bindable var model = model
@@ -18,7 +17,7 @@ struct MainWindow: View {
         .navigationSubtitle(model.windowSubtitle)
         .toolbar(removing: .title)
         .toolbar {
-            ConsoleToolbar(model: model, detailPlacement: $detailPlacement, isConfirmingClear: $isConfirmingClear)
+            ConsoleToolbar(model: model, detailPlacement: $detailPlacement, isConfirmingClear: $model.isConfirmingClear)
         }
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search")
         .searchScopes($model.searchScope) {
@@ -28,7 +27,7 @@ struct MainWindow: View {
         }
         .confirmationDialog(
             "Clear all requests from \(model.windowTitle)?",
-            isPresented: $isConfirmingClear
+            isPresented: $model.isConfirmingClear
         ) {
             Button("Clear", role: .destructive) {
                 model.clearSelectedSession()

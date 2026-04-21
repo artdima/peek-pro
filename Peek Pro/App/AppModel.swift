@@ -18,6 +18,7 @@ final class AppModel {
     var searchText = ""
     var searchScope = ConsoleSearchScope.all
     var quickMode = ConsoleQuickMode.all
+    var isConfirmingClear = false
     var isFollowing = true {
         didSet { unseenBaseline = isFollowing ? nil : selectedEntries.count }
     }

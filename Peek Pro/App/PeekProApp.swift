@@ -22,7 +22,13 @@ struct PeekProApp: App {
         .commands {
             SidebarCommands()
             ToolbarCommands()
+            AppCommands(model: model)
             DebugCommands(model: model)
+        }
+
+        Settings {
+            SettingsView()
+                .environment(model)
         }
     }
 }
