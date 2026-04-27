@@ -63,12 +63,21 @@ struct InfoPanel: View {
             InfoRow(title: "Folder", value: file.url.deletingLastPathComponent().path(percentEncoded: false), isMonospaced: true),
             InfoRow(title: "Size", value: PeekFormat.bytes(file.byteCount)),
             InfoRow(title: "Modified", value: PeekFormat.dateTime(file.modifiedAt)),
-            InfoRow(title: "Format", value: "Version \(file.formatVersion)"),
+            InfoRow(title: "Format", value: formatText(file)),
         ]
+        if case .unsupportedFormat = file.failure {
+            rows.append(InfoRow(title: "Status", value: "Can't be opened"))
+        }
         if file.skippedLines > 0 {
             rows.append(InfoRow(title: "Skipped", value: "\(file.skippedLines) unreadable lines"))
         }
         return rows
+    }
+
+    private func formatText(_ file: PeekSessionFile) -> String {
+        if file.failure != nil { return "Version \(file.formatVersion) (no longer supported)" }
+        if file.isNewerFormat { return "Version \(file.formatVersion) (newer than this app)" }
+        return "Version \(file.formatVersion)"
     }
 
     private func appRows(_ info: PeekSessionInfo) -> [InfoRow] {

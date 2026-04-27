@@ -64,7 +64,19 @@ nonisolated struct PeekSessionFile: Identifiable, Hashable, Sendable {
     let formatVersion: Int
     /// Lines the reader could not decode and skipped.
     let skippedLines: Int
+    var failure: PeekFileFailure? = nil
+
+    /// The newest session format this build reads fully.
+    static let supportedFormatVersion = 1
 
     var id: PeekSessionID { .file(url) }
     var name: String { url.lastPathComponent }
+    /// Written by a newer Peek: read anyway, but fields this build doesn't know are skipped.
+    var isNewerFormat: Bool { formatVersion > Self.supportedFormatVersion }
+    var hasWarnings: Bool { isNewerFormat || skippedLines > 0 }
+}
+
+nonisolated enum PeekFileFailure: Hashable, Sendable {
+    /// The header was read, but the format predates what this build can read.
+    case unsupportedFormat(version: Int)
 }

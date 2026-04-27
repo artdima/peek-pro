@@ -6,10 +6,13 @@ struct ConsoleContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.selectedSessionID != nil {
+            if let id = model.selectedSessionID, model.store.file(id)?.failure == nil {
                 QuickModeBar()
                 Divider()
                 ConsoleBanners()
+                if let file = model.store.file(id) {
+                    FileBanners(file: file)
+                }
             }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -27,6 +30,8 @@ struct ConsoleContentView: View {
         if model.selectedSessionID == nil {
             ContentUnavailableView("No Session", systemImage: "iphone.slash",
                                    description: Text("Connect a device or open a .peek file."))
+        } else if let id = model.selectedSessionID, let file = model.store.file(id), file.failure != nil {
+            FileFailureView(file: file)
         } else if model.selectedEntries.isEmpty {
             ContentUnavailableView("No Requests Yet", systemImage: "network",
                                    description: Text("Requests from the app appear here as they happen."))
@@ -62,6 +67,14 @@ struct ConsoleContentView: View {
 #Preview("Live") {
     ConsoleContentView()
         .environment(AppModel.preview(.live))
+        .frame(width: 1000, height: 600)
+}
+
+#Preview("Newer File") {
+    let model = AppModel.preview(.file)
+    model.selectedSessionID = FixtureSessions.futureFile.id
+    return ConsoleContentView()
+        .environment(model)
         .frame(width: 1000, height: 600)
 }
 

@@ -188,6 +188,8 @@ final class MockStore {
             entriesBySession[FixtureSessions.iPadSession.id] = FixtureSessions.iPadEntries
         case .file:
             loadFiles()
+            files += [FixtureSessions.futureFile, FixtureSessions.legacyFile]
+            entriesBySession[FixtureSessions.futureFile.id] = FixtureSessions.futureFileEntries
         case .rejected:
             rejected = FixtureSessions.rejected
         }

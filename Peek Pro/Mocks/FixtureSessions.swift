@@ -82,6 +82,31 @@ enum FixtureSessions {
         skippedLines: 2
     )
 
+    static let futureFile = PeekSessionFile(
+        url: URL(filePath: "/Users/Shared/Peek/from-peek-2.1.peek"),
+        byteCount: 96_310,
+        modifiedAt: Fixtures.start.addingTimeInterval(-3_600),
+        info: info(shop, iPhone, startedAt: Fixtures.start.addingTimeInterval(-4_000)),
+        formatVersion: 2,
+        skippedLines: 0
+    )
+
+    static let legacyFile = PeekSessionFile(
+        url: URL(filePath: "/Users/Shared/Peek/prerelease-demo.peek"),
+        byteCount: 12_004,
+        modifiedAt: Fixtures.start.addingTimeInterval(-2_592_000),
+        info: PeekSessionInfo(app: admin, device: pixel8, peekVersion: "1.9.0-dev", startedAt: Fixtures.start.addingTimeInterval(-2_600_000)),
+        formatVersion: 0,
+        skippedLines: 0,
+        failure: .unsupportedFormat(version: 0)
+    )
+
+    static let futureFileEntries = Fixtures.copies(
+        of: Array(Fixtures.session.suffix(14)),
+        prefix: "future",
+        shiftedBy: -3_900
+    )
+
     static let rejected: [PeekRejectedConnection] = [
         PeekRejectedConnection(
             id: "r1",

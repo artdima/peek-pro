@@ -48,6 +48,12 @@ struct SessionsPanel: View {
                         RejectedConnectionRow(connection: connection)
                             .selectionDisabled()
                             .contextMenu {
+                                if connection.reason == .invalidToken {
+                                    Button("Copy Current Token") {
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(store.server.token, forType: .string)
+                                    }
+                                }
                                 Button("Dismiss") { store.dismissRejected(connection.id) }
                             }
                     }

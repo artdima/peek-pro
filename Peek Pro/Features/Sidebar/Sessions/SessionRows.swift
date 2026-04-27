@@ -105,16 +105,44 @@ struct SessionFileRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(file.name)
                     .truncationMode(.middle)
-                Text("\(PeekFormat.bytes(file.byteCount)) · \(PeekFormat.date(file.modifiedAt))")
+                Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .lineLimit(1)
         } icon: {
             Image(systemName: "doc.text")
+                .overlay(alignment: .bottomTrailing) {
+                    if file.failure != nil {
+                        StatusBadgeIcon(symbol: "xmark.circle.fill", color: Color(.statusFailure))
+                    } else if file.hasWarnings {
+                        StatusBadgeIcon(symbol: "exclamationmark.triangle.fill", color: .yellow)
+                    }
+                }
         }
-        .badge(count)
+        .badge(file.failure == nil ? count : 0)
         .help(file.url.path(percentEncoded: false))
+    }
+
+    private var subtitle: String {
+        if case .unsupportedFormat(let version) = file.failure {
+            return "Can't open — format v\(version)"
+        }
+        return "\(PeekFormat.bytes(file.byteCount)) · \(PeekFormat.date(file.modifiedAt))"
+    }
+}
+
+private struct StatusBadgeIcon: View {
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 8, weight: .bold))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, color)
+            .background(Circle().fill(.background).padding(-1))
+            .offset(x: 4, y: 3)
     }
 }
 
@@ -134,17 +162,31 @@ struct RejectedConnectionRow: View {
             Image(systemName: "xmark.shield")
                 .foregroundStyle(Color(.statusFailure))
         }
-        .help("\(reason) — \(connection.address), \(PeekFormat.time(connection.at))")
+        .help("\(connection.reason.advice)\n\(connection.address), \(PeekFormat.time(connection.at))")
     }
 
     private var title: String {
         [connection.deviceName, connection.appName].compactMap(\.self).joined(separator: " · ")
     }
 
-    private var reason: String {
-        switch connection.reason {
+    private var reason: String { connection.reason.title }
+}
+
+extension PeekRejectedConnection.Reason {
+    var title: String {
+        switch self {
         case .invalidToken: "Wrong token"
         case .unsupportedProtocol(let version): "Protocol v\(version) is not supported"
+        }
+    }
+
+    /// What the person at the device should do about it.
+    var advice: String {
+        switch self {
+        case .invalidToken:
+            "The app sent an old or mistyped token. Copy the current token into the app's PeekRemote setup and restart it."
+        case .unsupportedProtocol(let version):
+            "The app speaks peek_remote protocol v\(version), newer than this Peek Pro understands. Update Peek Pro."
         }
     }
 }

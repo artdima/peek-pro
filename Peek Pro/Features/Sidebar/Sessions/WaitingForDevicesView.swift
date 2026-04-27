@@ -47,8 +47,15 @@ struct WaitingForDevicesView: View {
             Text("Couldn't Connect")
                 .font(.subheadline.weight(.semibold))
             ForEach(model.store.rejected) { connection in
-                RejectedConnectionRow(connection: connection)
-                    .font(.callout)
+                VStack(alignment: .leading, spacing: 4) {
+                    RejectedConnectionRow(connection: connection)
+                        .font(.callout)
+                    Text(connection.reason.advice)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, 26)
+                }
             }
         }
     }
@@ -58,9 +65,13 @@ struct WaitingForDevicesView: View {
             Label("Port \(String(server.port)) is in use", systemImage: "exclamationmark.triangle.fill")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
-            Text("Another app is listening on this port. Quit it or choose another port in Settings, then update the endpoint in your app.")
+            Text("Another app is listening on this port. Quit it or choose another port, then update the endpoint in your app.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            SettingsLink {
+                Text("Change Port…")
+            }
+            .padding(.top, 4)
         }
     }
 
@@ -178,6 +189,13 @@ struct ServerStatusFooter: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                if server.status == .portInUse {
+                    SettingsLink {
+                        Text("Change…")
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 7)

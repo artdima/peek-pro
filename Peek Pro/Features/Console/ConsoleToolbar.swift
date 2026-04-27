@@ -206,10 +206,17 @@ private struct ConnectionPopover: View {
                     }
                 }
             }
-            Text("Devices connect with this address and token. Change the port in Settings.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Devices connect with this address and token.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                SettingsLink {
+                    Text("Settings…")
+                }
+                .controlSize(.small)
+            }
         }
         .padding(16)
         .frame(width: 340)
