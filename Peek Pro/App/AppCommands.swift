@@ -10,6 +10,9 @@ struct AppCommands: Commands {
     @AppStorage("detailPlacement.lastVisible") private var lastVisiblePlacement: DetailPlacement = .bottom
 
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About Peek Pro") { AboutPanel.show() }
+        }
         fileCommands
         viewCommands
         requestMenu
@@ -140,9 +143,7 @@ struct AppCommands: Commands {
     private var helpCommands: some Commands {
         CommandGroup(replacing: .help) {
             Button("Peek on GitHub") {
-                if let url = URL(string: "https://github.com/artdima/peek") {
-                    NSWorkspace.shared.open(url)
-                }
+                NSWorkspace.shared.open(AboutPanel.peekRepository)
             }
         }
     }
