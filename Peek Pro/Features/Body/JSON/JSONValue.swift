@@ -210,47 +210,76 @@ nonisolated struct JSONParser {
     }
 }
 
-nonisolated struct JSONTreeRow: Identifiable, Sendable {
-    /// The path, e.g. `items[3].id`; the root is `$`.
+/// One printed line of formatted JSON — what the Tree view shows, folding included.
+nonisolated struct JSONLine: Identifiable, Sendable {
+    nonisolated enum Kind: Sendable {
+        /// `"key": value` or a lone value; empty containers print here as `{}` / `[]`.
+        case leaf(JSONValue)
+        /// `"key": {` — the start of an expanded container.
+        case open(bracket: Character)
+        /// `}` — the end of an expanded container.
+        case close(bracket: Character)
+        /// `"key": { … }` — a folded container.
+        case folded(open: Character, close: Character, count: Int)
+    }
+
     let id: String
+    /// The node the line belongs to, e.g. `items[3].id`; the root is `$`.
+    let path: String
     let depth: Int
     let key: String?
-    let isIndex: Bool
-    let value: JSONValue
+    let kind: Kind
+    let hasComma: Bool
+
+    var isFoldable: Bool {
+        switch kind {
+        case .open, .folded: true
+        default: false
+        }
+    }
+
+    var isExpanded: Bool {
+        if case .open = kind { return true }
+        return false
+    }
+
+    /// Lines that open, close or stand for a container — the ones Expand / Collapse applies to.
+    var isContainerLine: Bool {
+        if case .leaf = kind { return false }
+        return true
+    }
 }
+
+typealias JSONChild = (key: String?, value: JSONValue, path: String)
 
 nonisolated enum JSONTree {
     static let rootID = "$"
+    /// Containers bigger than this start folded, so a huge array doesn't open as tens of thousands of lines.
+    static let autoExpandLimit = 50
 
-    static func rows(_ root: JSONValue, expanded: Set<String>) -> [JSONTreeRow] {
-        var rows: [JSONTreeRow] = []
-        append(root, id: rootID, key: nil, isIndex: false, depth: 0, expanded: expanded, into: &rows)
-        return rows
+    static func lines(_ root: JSONValue, expanded: Set<String>) -> [JSONLine] {
+        var lines: [JSONLine] = []
+        append(root, path: rootID, key: nil, depth: 0, hasComma: false, expanded: expanded, into: &lines)
+        return lines
     }
 
-    /// Opens the root, and its children too when there are only a few of them.
     static func initialExpansion(_ root: JSONValue) -> Set<String> {
-        var expanded: Set<String> = [rootID]
-        guard root.childCount <= 20 else { return expanded }
-        switch root {
-        case .object(let members):
-            for member in members where member.value.isContainer {
-                expanded.insert(childPath(rootID, key: member.key))
-            }
-        case .array(let items):
-            for (index, item) in items.enumerated() where item.isContainer {
-                expanded.insert(indexPath(rootID, index: index))
-            }
-        default:
-            break
-        }
-        return expanded
+        var paths: Set<String> = [rootID]
+        collect(root, id: rootID, into: &paths) { $0.childCount <= autoExpandLimit }
+        return paths
     }
 
     static func allContainerPaths(_ root: JSONValue) -> Set<String> {
         var paths: Set<String> = []
-        collect(root, id: rootID, into: &paths)
+        collect(root, id: rootID, into: &paths) { _ in true }
         return paths
+    }
+
+    static func value(at path: String, in root: JSONValue) -> JSONValue? {
+        if path == rootID { return root }
+        var found: JSONValue?
+        find(path, in: root, id: rootID, found: &found)
+        return found
     }
 
     static func displayPath(_ id: String) -> String {
@@ -281,53 +310,7 @@ nonisolated enum JSONTree {
         }
     }
 
-    private static func append(
-        _ value: JSONValue, id: String, key: String?, isIndex: Bool, depth: Int,
-        expanded: Set<String>, into rows: inout [JSONTreeRow]
-    ) {
-        rows.append(JSONTreeRow(id: id, depth: depth, key: key, isIndex: isIndex, value: value))
-        guard expanded.contains(id) else { return }
-        switch value {
-        case .object(let members):
-            for member in members {
-                append(member.value, id: childPath(id, key: member.key), key: member.key, isIndex: false,
-                       depth: depth + 1, expanded: expanded, into: &rows)
-            }
-        case .array(let items):
-            for (index, item) in items.enumerated() {
-                append(item, id: indexPath(id, index: index), key: String(index), isIndex: true,
-                       depth: depth + 1, expanded: expanded, into: &rows)
-            }
-        default:
-            break
-        }
-    }
-
-    private static func collect(_ value: JSONValue, id: String, into paths: inout Set<String>) {
-        switch value {
-        case .object(let members):
-            paths.insert(id)
-            for member in members { collect(member.value, id: childPath(id, key: member.key), into: &paths) }
-        case .array(let items):
-            paths.insert(id)
-            for (index, item) in items.enumerated() { collect(item, id: indexPath(id, index: index), into: &paths) }
-        default:
-            break
-        }
-    }
-
-    private static func childPath(_ parent: String, key: String) -> String {
-        let isPlain = !key.isEmpty && key.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
-        let component = isPlain ? key : "[\(quoted(key))]"
-        if parent == rootID { return component }
-        return isPlain ? "\(parent).\(component)" : parent + component
-    }
-
-    private static func indexPath(_ parent: String, index: Int) -> String {
-        (parent == rootID ? "" : parent) + "[\(index)]"
-    }
-
-    private static func quoted(_ text: String) -> String {
+    static func quoted(_ text: String) -> String {
         var result = "\""
         for scalar in text.unicodeScalars {
             switch scalar {
@@ -345,5 +328,86 @@ nonisolated enum JSONTree {
             }
         }
         return result + "\""
+    }
+
+    private static func children(of value: JSONValue, path: String) -> [JSONChild] {
+        var result: [JSONChild] = []
+        switch value {
+        case .object(let members):
+            for member in members {
+                result.append((key: member.key, value: member.value, path: childPath(path, key: member.key)))
+            }
+        case .array(let items):
+            for (index, item) in items.enumerated() {
+                result.append((key: nil, value: item, path: indexPath(path, index: index)))
+            }
+        default:
+            break
+        }
+        return result
+    }
+
+    private static func brackets(of value: JSONValue) -> (open: Character, close: Character)? {
+        switch value {
+        case .object: ("{", "}")
+        case .array: ("[", "]")
+        default: nil
+        }
+    }
+
+    private static func append(
+        _ value: JSONValue, path: String, key: String?, depth: Int, hasComma: Bool,
+        expanded: Set<String>, into lines: inout [JSONLine]
+    ) {
+        let items = children(of: value, path: path)
+        guard let brackets = brackets(of: value), !items.isEmpty else {
+            lines.append(JSONLine(id: path, path: path, depth: depth, key: key, kind: .leaf(value), hasComma: hasComma))
+            return
+        }
+        guard expanded.contains(path) else {
+            let kind = JSONLine.Kind.folded(open: brackets.open, close: brackets.close, count: items.count)
+            lines.append(JSONLine(id: path, path: path, depth: depth, key: key, kind: kind, hasComma: hasComma))
+            return
+        }
+        lines.append(JSONLine(id: path, path: path, depth: depth, key: key, kind: .open(bracket: brackets.open), hasComma: false))
+        for (index, item) in items.enumerated() {
+            append(item.value, path: item.path, key: item.key, depth: depth + 1,
+                   hasComma: index < items.count - 1, expanded: expanded, into: &lines)
+        }
+        lines.append(JSONLine(id: path + "#end", path: path, depth: depth, key: nil,
+                              kind: .close(bracket: brackets.close), hasComma: hasComma))
+    }
+
+    private static func collect(
+        _ value: JSONValue, id: String, into paths: inout Set<String>, where include: (JSONValue) -> Bool
+    ) {
+        guard value.isContainer else { return }
+        if include(value) { paths.insert(id) }
+        for child in children(of: value, path: id) {
+            collect(child.value, id: child.path, into: &paths, where: include)
+        }
+    }
+
+    private static func find(_ target: String, in value: JSONValue, id: String, found: inout JSONValue?) {
+        for child in children(of: value, path: id) where found == nil {
+            if child.path == target {
+                found = child.value
+                return
+            }
+            if target.hasPrefix(child.path) {
+                find(target, in: child.value, id: child.path, found: &found)
+            }
+        }
+    }
+
+    private static func childPath(_ parent: String, key: String) -> String {
+        let isPlain = !key.isEmpty && key.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+        let component = isPlain ? key : "[\(quoted(key))]"
+        if parent == rootID { return component }
+        return isPlain ? "\(parent).\(component)" : parent + component
+    }
+
+    private static func indexPath(_ parent: String, index: Int) -> String {
+        (parent == rootID ? "" : parent) + "[\(index)]"
     }
 }

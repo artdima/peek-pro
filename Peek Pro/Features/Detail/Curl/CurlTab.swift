@@ -1,52 +1,10 @@
 import SwiftUI
 
-nonisolated enum CurlHighlighter {
-    nonisolated enum Kind: Sendable {
-        case command
-        case flag
-        case string
-    }
-
-    private static let curlWord = Array("curl".utf16)
-
-    /// Colors the `curl` word, `-X` / `--data` style flags and single-quoted arguments.
-    static func tokens(in text: String) -> [(kind: Kind, range: NSRange)] {
-        let units = Array(text.utf16)
-        var result: [(kind: Kind, range: NSRange)] = []
-        var index = 0
-        var atWordStart = true
-        while index < units.count {
-            let unit = units[index]
-            if unit == 0x27 {
-                let start = index
-                index += 1
-                while index < units.count, units[index] != 0x27 { index += 1 }
-                index = min(index + 1, units.count)
-                result.append((kind: .string, range: NSRange(location: start, length: index - start)))
-                atWordStart = false
-            } else if atWordStart, unit == 0x2D {
-                let start = index
-                while index < units.count, units[index] != 0x20, units[index] != 0x0A { index += 1 }
-                result.append((kind: .flag, range: NSRange(location: start, length: index - start)))
-                atWordStart = false
-            } else if atWordStart, index + curlWord.count <= units.count,
-                      units[index..<index + curlWord.count].elementsEqual(curlWord) {
-                result.append((kind: .command, range: NSRange(location: index, length: curlWord.count)))
-                index += curlWord.count
-                atWordStart = false
-            } else {
-                atWordStart = unit == 0x20 || unit == 0x0A
-                index += 1
-            }
-        }
-        return result
-    }
-}
-
 struct CurlTab: View {
     let entry: PeekEntry
 
     @AppStorage("curl.multiline") private var isMultiline = true
+    @AppStorage(SettingsKey.bodyFontSize) private var fontSize = 12.0
 
     var body: some View {
         let command = MockExport.curl(entry, multiline: isMultiline)
@@ -78,14 +36,7 @@ struct CurlTab: View {
                 .background(Color.primary.opacity(0.04))
                 Divider()
             }
-            ScrollView([.vertical, .horizontal]) {
-                Text(highlighted(command))
-                    .font(.system(.callout, design: .monospaced))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: !isMultiline, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(16)
-            }
+            CodeTextView(text: command, syntax: .curl, wraps: true, showsLineNumbers: false, fontSize: fontSize)
         }
     }
 
@@ -99,24 +50,9 @@ struct CurlTab: View {
         default: break
         }
         if entry.request.headers.entries.contains(where: { $0.value.contains("*****") }) {
-            result.append("Redacted values are copied as ***** — replace them before running.")
+            result.append("Some values were masked on the device and are copied as *****.")
         }
         return result
-    }
-
-    private func highlighted(_ command: String) -> AttributedString {
-        var text = AttributedString(command)
-        for token in CurlHighlighter.tokens(in: command) {
-            guard let range = Range(token.range, in: command),
-                  let attributed = Range(range, in: text)
-            else { continue }
-            switch token.kind {
-            case .command: text[attributed].foregroundColor = Color(.codeKeyword)
-            case .flag: text[attributed].foregroundColor = Color(.codeNumber)
-            case .string: text[attributed].foregroundColor = Color(.codeString)
-            }
-        }
-        return text
     }
 }
 

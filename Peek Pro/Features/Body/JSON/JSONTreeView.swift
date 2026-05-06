@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+/// Formatted JSON with line numbers and folding — the way Pulse shows a response.
 struct JSONTreeView: View {
     let text: String
 
@@ -10,6 +11,7 @@ struct JSONTreeView: View {
         case failed
     }
 
+    @AppStorage(SettingsKey.bodyFontSize) private var fontSize = 12.0
     @State private var state = LoadState.loading
     @State private var expanded: Set<String> = []
 
@@ -26,7 +28,7 @@ struct JSONTreeView: View {
                     Text("The body can't be parsed — it may be cut short. Switch to Raw to read it as text.")
                 }
             case .parsed(let root):
-                tree(root)
+                document(root)
             }
         }
         .task(id: text) {
@@ -45,14 +47,15 @@ struct JSONTreeView: View {
         }
     }
 
-    private func tree(_ root: JSONValue) -> some View {
-        let rows = JSONTree.rows(root, expanded: expanded)
+    private func document(_ root: JSONValue) -> some View {
+        let lines = JSONTree.lines(root, expanded: expanded)
+        let gutter = CGFloat(max(2, String(lines.count).count)) * fontSize * 0.62 + 8
         return VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Button("Expand All") { expanded = JSONTree.allContainerPaths(root) }
                 Button("Collapse All") { expanded = [JSONTree.rootID] }
                 Spacer()
-                Text("\(rows.count) rows")
+                Text("\(lines.count) lines")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -61,30 +64,43 @@ struct JSONTreeView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 5)
             Divider()
-            List(rows) { row in
-                JSONTreeRowView(row: row, isExpanded: expanded.contains(row.id)) {
-                    toggle(row.id)
-                }
-                .contextMenu {
-                    if row.value.isContainer {
-                        Button(expanded.contains(row.id) ? "Collapse" : "Expand") { toggle(row.id) }
-                        Divider()
-                    }
-                    Button("Copy Value") { copy(JSONTree.format(row.value)) }
-                    if row.id != JSONTree.rootID {
-                        Button("Copy Path") { copy(JSONTree.displayPath(row.id)) }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
+                        JSONLineView(line: line, number: index + 1, gutter: gutter, fontSize: fontSize) {
+                            toggle(line.path)
+                        }
+                        .contextMenu { menu(for: line, root: root) }
                     }
                 }
+                .padding(.vertical, 8)
+                .padding(.trailing, 12)
+                .textSelection(.enabled)
             }
-            .listStyle(.plain)
         }
     }
 
-    private func toggle(_ id: String) {
-        if expanded.contains(id) {
-            expanded.remove(id)
+    @ViewBuilder
+    private func menu(for line: JSONLine, root: JSONValue) -> some View {
+        if line.isContainerLine {
+            Button(expanded.contains(line.path) ? "Collapse" : "Expand") { toggle(line.path) }
+            Divider()
+        }
+        Button("Copy Value") {
+            if let value = JSONTree.value(at: line.path, in: root) {
+                copy(JSONTree.format(value))
+            }
+        }
+        if line.path != JSONTree.rootID {
+            Button("Copy Path") { copy(JSONTree.displayPath(line.path)) }
+        }
+    }
+
+    private func toggle(_ path: String) {
+        if expanded.contains(path) {
+            expanded.remove(path)
         } else {
-            expanded.insert(id)
+            expanded.insert(path)
         }
     }
 
@@ -94,77 +110,102 @@ struct JSONTreeView: View {
     }
 }
 
-private struct JSONTreeRowView: View {
-    let row: JSONTreeRow
-    let isExpanded: Bool
+private struct JSONLineView: View {
+    let line: JSONLine
+    let number: Int
+    let gutter: CGFloat
+    let fontSize: Double
     let toggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
-            Color.clear
-                .frame(width: CGFloat(row.depth) * 14, height: 1)
-            if row.value.isContainer {
-                Button(action: toggle) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .frame(width: 12, height: 14)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-            } else {
-                Color.clear
-                    .frame(width: 12, height: 1)
-            }
-            if let key = row.key {
-                Text(key)
-                    .foregroundStyle(row.isIndex ? HierarchicalShapeStyle.secondary : HierarchicalShapeStyle.primary)
-                Text(":")
-                    .foregroundStyle(.tertiary)
-            }
-            valueText
-                .truncationMode(.middle)
-            Spacer(minLength: 0)
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("\(number)")
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+                .frame(width: gutter, alignment: .trailing)
+            foldButton
+                .frame(width: fontSize * 1.4)
+            Text(content)
+                .padding(.leading, CGFloat(line.depth) * indent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.system(.callout, design: .monospaced))
-        .lineLimit(1)
-        .help(JSONTree.displayPath(row.id))
+        .font(.system(size: fontSize, design: .monospaced))
+        .help(JSONTree.displayPath(line.path))
     }
 
+    /// Two characters of the monospaced font, like a two-space indent.
+    private var indent: CGFloat { fontSize * 1.2 }
+
     @ViewBuilder
-    private var valueText: some View {
-        switch row.value {
-        case .object(let members):
-            Text("{ \(members.count) }")
-                .foregroundStyle(.secondary)
-        case .array(let items):
-            Text("[ \(items.count) ]")
-                .foregroundStyle(.secondary)
-        case .string(let text):
-            Text("\"\(text)\"")
-                .foregroundStyle(Color(.codeString))
-        case .number(let number):
-            Text(number)
-                .foregroundStyle(Color(.codeNumber))
-        case .bool(let flag):
-            Text(flag ? "true" : "false")
-                .foregroundStyle(Color(.codeKeyword))
-        case .null:
-            Text("null")
-                .foregroundStyle(Color(.codeKeyword))
+    private var foldButton: some View {
+        if line.isFoldable {
+            let isOpen = line.isExpanded
+            Button(action: toggle) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: fontSize * 0.7, weight: .semibold))
+                    .rotationEffect(.degrees(isOpen ? 90 : 0))
+                    .foregroundStyle(.secondary)
+                    .frame(width: fontSize * 1.4, height: fontSize * 1.2)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(isOpen ? "Collapse" : "Expand")
+        } else {
+            Color.clear
+                .frame(height: 1)
         }
+    }
+
+    private var content: AttributedString {
+        var text = AttributedString()
+        if let key = line.key {
+            text += piece(JSONTree.quoted(key), Color.primary)
+            text += piece(": ", Color.secondary)
+        }
+        switch line.kind {
+        case .leaf(let value):
+            text += valueText(value)
+        case .open(let bracket):
+            text += piece(String(bracket), Color.secondary)
+        case .close(let bracket):
+            text += piece(String(bracket), Color.secondary)
+        case .folded(let open, let close, let count):
+            text += piece("\(open) … \(close)", Color.secondary)
+            text += piece("  \(count) \(count == 1 ? "item" : "items")", Color(nsColor: .tertiaryLabelColor))
+        }
+        if line.hasComma {
+            text += piece(",", Color.secondary)
+        }
+        return text
+    }
+
+    private func valueText(_ value: JSONValue) -> AttributedString {
+        switch value {
+        case .string(let string): piece(JSONTree.quoted(string), Color(.codeString))
+        case .number(let number): piece(number, Color(.codeNumber))
+        case .bool(let flag): piece(flag ? "true" : "false", Color(.codeKeyword))
+        case .null: piece("null", Color(.codeKeyword))
+        case .object: piece("{}", Color.secondary)
+        case .array: piece("[]", Color.secondary)
+        }
+    }
+
+    private func piece(_ string: String, _ color: Color) -> AttributedString {
+        var text = AttributedString(string)
+        text.foregroundColor = color
+        return text
     }
 }
 
-#Preview("Profile") {
-    JSONTreeView(text: FixtureBodies.profile)
-        .frame(width: 600, height: 500)
+#Preview("Login") {
+    JSONTreeView(text: FixtureBodies.loginResponse)
+        .frame(width: 700, height: 500)
 }
 
 #Preview("Catalog — Dark") {
     JSONTreeView(text: FixtureBodies.catalog)
-        .frame(width: 600, height: 500)
+        .frame(width: 700, height: 500)
         .preferredColorScheme(.dark)
 }
 

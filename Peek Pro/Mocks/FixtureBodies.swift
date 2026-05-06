@@ -1,10 +1,14 @@
 import AppKit
 
 enum FixtureBodies {
+    static let accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFubmEgUGV0cm92YSIsInNjb3BlIjoicHJvZmlsZSBvcmRlcnMiLCJpYXQiOjE3OTAxNzUyOTksImV4cCI6MTc5MDE3ODg5OX0.Ot3l5DuVJKmHtCm5d4BWTI5oWGXw0JUKCpDXI-MjhJ4"
+    static let refreshedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2NvcGUiOiJwcm9maWxlIG9yZGVycyIsImlhdCI6MTc5MDE3NTMxOSwiZXhwIjoxNzkwMTc4OTE5fQ.HZp-QgXa84myx9aV1v7tccJpF1hT62Yw9w90YHFTbgI"
+    static let refreshToken = "rt_26b56c1bdfb048c3e46419fde332bab7"
+
     static let loginRequest = """
     {
       "email": "anna@acme.dev",
-      "password": "*****",
+      "password": "Summer-Trail-2026!",
       "device": {
         "platform": "ios",
         "model": "iPhone 16 Pro"
@@ -14,8 +18,8 @@ enum FixtureBodies {
 
     static let loginResponse = """
     {
-      "access_token": "*****",
-      "refresh_token": "*****",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFubmEgUGV0cm92YSIsInNjb3BlIjoicHJvZmlsZSBvcmRlcnMiLCJpYXQiOjE3OTAxNzUyOTksImV4cCI6MTc5MDE3ODg5OX0.Ot3l5DuVJKmHtCm5d4BWTI5oWGXw0JUKCpDXI-MjhJ4",
+      "refresh_token": "rt_26b56c1bdfb048c3e46419fde332bab7",
       "token_type": "Bearer",
       "expires_in": 3600,
       "profile": {
@@ -139,7 +143,7 @@ enum FixtureBodies {
       "order_id": "ord_8Hq2",
       "amount": { "amount": 25800, "currency": "EUR" },
       "method": "card",
-      "card_token": "*****",
+      "card_token": "tok_1Q7xKd2eZvKYlo2C8f3LmN4p",
       "save_card": true
     }
     """
@@ -164,11 +168,11 @@ enum FixtureBodies {
     }
     """
 
-    static let tokenRequest = "grant_type=refresh_token&refresh_token=*****&client_id=acme-shop-ios&scope=profile%20orders"
+    static let tokenRequest = "grant_type=refresh_token&refresh_token=rt_26b56c1bdfb048c3e46419fde332bab7&client_id=acme-shop-ios&scope=profile%20orders"
 
     static let tokenResponse = """
     {
-      "access_token": "*****",
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2NvcGUiOiJwcm9maWxlIG9yZGVycyIsImlhdCI6MTc5MDE3NTMxOSwiZXhwIjoxNzkwMTc4OTE5fQ.HZp-QgXa84myx9aV1v7tccJpF1hT62Yw9w90YHFTbgI",
       "token_type": "Bearer",
       "expires_in": 3600,
       "scope": "profile orders"

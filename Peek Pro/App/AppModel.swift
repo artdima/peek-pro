@@ -19,8 +19,12 @@ final class AppModel {
     var searchScope = ConsoleSearchScope.all
     var quickMode = ConsoleQuickMode.all
     var isConfirmingClear = false
-    var isFollowing = true {
-        didSet { unseenBaseline = isFollowing ? nil : selectedEntries.count }
+    /// Off by default: new requests shouldn't pull the list away from what you're reading.
+    var isFollowing = false {
+        didSet {
+            unseenBaseline = isFollowing ? nil : selectedEntries.count
+            if isFollowing { scrollToLatestRequest += 1 }
+        }
     }
     /// How many requests the session had when Follow was switched off.
     private(set) var unseenBaseline: Int?
@@ -36,11 +40,17 @@ final class AppModel {
     init(store: MockStore = MockStore()) {
         self.store = store
         selectedSessionID = store.sessionIDs.first
+        markAllSeen()
     }
 
     func selectScenario(_ scenario: MockScenario) {
         store.select(scenario)
         selectedSessionID = store.sessionIDs.first
+        markAllSeen()
+    }
+
+    private func markAllSeen() {
+        unseenBaseline = isFollowing ? nil : selectedEntries.count
     }
 
     func showInfo(_ id: PeekSessionID) {
@@ -101,8 +111,9 @@ final class AppModel {
         return max(0, selectedEntries.count - unseenBaseline)
     }
 
+    /// Jumps to the newest request once; Follow stays as it was.
     func showLatest() {
-        isFollowing = true
+        markAllSeen()
         scrollToLatestRequest += 1
     }
 

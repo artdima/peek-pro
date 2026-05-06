@@ -4,7 +4,7 @@ import SwiftUI
 enum CodeTextStyle {
     static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
 
-    static func color(for kind: JSONToken.Kind) -> NSColor {
+    static func color(for kind: CodeToken.Kind) -> NSColor {
         switch kind {
         case .string: NSColor(named: "CodeString") ?? .systemRed
         case .number: NSColor(named: "CodeNumber") ?? .systemBlue
@@ -29,8 +29,9 @@ final class CodeTextProxy {
 /// Read-only monospaced text with line numbers and the system find bar; SwiftUI `Text` can't hold a megabyte.
 struct CodeTextView: NSViewRepresentable {
     let text: String
-    var highlightsJSON = false
+    var syntax = CodeSyntax.plain
     var wraps = false
+    var showsLineNumbers = true
     var fontSize = 12.0
     var proxy: CodeTextProxy?
 
@@ -61,13 +62,16 @@ struct CodeTextView: NSViewRepresentable {
         textView.layoutManager?.allowsNonContiguousLayout = true
         scrollView.documentView = textView
 
-        let ruler = LineNumberRulerView(textView: textView, scrollView: scrollView)
-        scrollView.verticalRulerView = ruler
-        scrollView.hasVerticalRuler = true
-        scrollView.rulersVisible = true
-
         context.coordinator.textView = textView
-        context.coordinator.ruler = ruler
+        if showsLineNumbers {
+            let ruler = LineNumberRulerView(textView: textView, scrollView: scrollView)
+            scrollView.verticalRulerView = ruler
+            scrollView.hasVerticalRuler = true
+            scrollView.rulersVisible = true
+            context.coordinator.ruler = ruler
+        } else {
+            textView.textContainerInset = NSSize(width: 12, height: 12)
+        }
         return scrollView
     }
 
@@ -79,8 +83,8 @@ struct CodeTextView: NSViewRepresentable {
             coordinator.wraps = wraps
             Self.apply(wraps: wraps, textView: textView, scrollView: scrollView)
         }
-        if coordinator.text != text || coordinator.highlightsJSON != highlightsJSON || coordinator.fontSize != fontSize {
-            coordinator.load(text, highlightsJSON: highlightsJSON, fontSize: fontSize)
+        if coordinator.text != text || coordinator.syntax != syntax || coordinator.fontSize != fontSize {
+            coordinator.load(text, syntax: syntax, fontSize: fontSize)
         }
     }
 
@@ -108,15 +112,15 @@ struct CodeTextView: NSViewRepresentable {
         weak var textView: NSTextView?
         weak var ruler: LineNumberRulerView?
         var text: String?
-        var highlightsJSON = false
+        var syntax = CodeSyntax.plain
         var wraps: Bool?
         var fontSize = 12.0
         var highlightTask: Task<Void, Never>?
 
         /// Plain text goes in at once; colors follow when the background scan finishes.
-        func load(_ text: String, highlightsJSON: Bool, fontSize: Double) {
+        func load(_ text: String, syntax: CodeSyntax, fontSize: Double) {
             self.text = text
-            self.highlightsJSON = highlightsJSON
+            self.syntax = syntax
             self.fontSize = fontSize
             highlightTask?.cancel()
             guard let textView, let storage = textView.textStorage else { return }
@@ -125,10 +129,10 @@ struct CodeTextView: NSViewRepresentable {
             storage.setAttributedString(NSAttributedString(string: text, attributes: attributes))
             ruler?.reload(text)
             textView.scroll(.zero)
-            guard highlightsJSON else { return }
+            guard syntax != .plain else { return }
             highlightTask = Task { [weak self] in
                 let tokens = await Task.detached(priority: .userInitiated) {
-                    JSONHighlighter.tokens(in: text)
+                    syntax.tokens(in: text)
                 }.value
                 guard !Task.isCancelled, let self, self.text == text, let storage = self.textView?.textStorage else { return }
                 storage.beginEditing()
@@ -234,12 +238,12 @@ final class LineNumberRulerView: NSRulerView {
 }
 
 #Preview("JSON") {
-    CodeTextView(text: FixtureBodies.profile, highlightsJSON: true)
+    CodeTextView(text: FixtureBodies.profile, syntax: .json)
         .frame(width: 700, height: 500)
 }
 
 #Preview("Megabyte — Dark") {
-    CodeTextView(text: FixtureBodies.catalog, highlightsJSON: true)
+    CodeTextView(text: FixtureBodies.catalog, syntax: .json)
         .frame(width: 700, height: 500)
         .preferredColorScheme(.dark)
 }

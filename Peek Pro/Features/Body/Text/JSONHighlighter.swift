@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct JSONToken: Sendable {
+nonisolated struct CodeToken: Sendable {
     nonisolated enum Kind: Sendable {
         case string
         case number
@@ -17,10 +17,10 @@ nonisolated enum JSONHighlighter {
     private static let falseWord = Array("false".utf16)
     private static let nullWord = Array("null".utf16)
 
-    static func tokens(in text: String) -> [JSONToken] {
+    static func tokens(in text: String) -> [CodeToken] {
         let units = Array(text.utf16)
         let count = units.count
-        var tokens: [JSONToken] = []
+        var tokens: [CodeToken] = []
         var index = 0
         while index < count {
             let unit = units[index]
@@ -28,19 +28,19 @@ nonisolated enum JSONHighlighter {
                 let start = index
                 index = endOfString(units, from: index + 1)
                 if !isFollowedByColon(units, from: index) {
-                    tokens.append(JSONToken(kind: .string, range: NSRange(location: start, length: index - start)))
+                    tokens.append(CodeToken(kind: .string, range: NSRange(location: start, length: index - start)))
                 }
             } else if unit == 0x2D || (unit >= 0x30 && unit <= 0x39) {
                 let start = index
                 index += 1
                 while index < count, isNumberPart(units[index]) { index += 1 }
-                tokens.append(JSONToken(kind: .number, range: NSRange(location: start, length: index - start)))
+                tokens.append(CodeToken(kind: .number, range: NSRange(location: start, length: index - start)))
             } else if unit >= 0x61 && unit <= 0x7A {
                 let start = index
                 while index < count, units[index] >= 0x61 && units[index] <= 0x7A { index += 1 }
                 let word = units[start..<index]
                 if word.elementsEqual(trueWord) || word.elementsEqual(falseWord) || word.elementsEqual(nullWord) {
-                    tokens.append(JSONToken(kind: .keyword, range: NSRange(location: start, length: index - start)))
+                    tokens.append(CodeToken(kind: .keyword, range: NSRange(location: start, length: index - start)))
                 }
             } else {
                 index += 1

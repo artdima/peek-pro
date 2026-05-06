@@ -198,7 +198,7 @@ struct BodyViewer: View {
             if jsonMode == .tree {
                 JSONTreeView(text: text)
             } else {
-                CodeTextView(text: text, highlightsJSON: true, wraps: wraps, fontSize: fontSize, proxy: proxy)
+                CodeTextView(text: text, syntax: .json, wraps: wraps, fontSize: fontSize, proxy: proxy)
             }
         case .formEncoded(let text):
             if formMode == .fields {

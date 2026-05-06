@@ -40,7 +40,7 @@ struct DesignSystemGallery: View {
                     InfoRow(title: "Method", value: login.request.method),
                     InfoRow(title: "Host", value: login.request.host),
                     InfoRow(title: "Path", value: login.request.path),
-                    InfoRow(title: "Authorization", value: "*****", isMonospaced: true, isRedacted: true),
+                    InfoRow(title: "Authorization", value: "Bearer eyJhbGciOiJIUzI1NiIs…", isMonospaced: true),
                     InfoRow(title: "Source", value: login.source),
                 ], collapsedCount: 3)
 

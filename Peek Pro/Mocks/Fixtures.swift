@@ -8,7 +8,7 @@ enum Fixtures {
 
     static func requestHeaders(_ extra: [(String, String)] = [], authorized: Bool = true) -> PeekHeaders {
         var pairs = [("Accept", "application/json"), ("Accept-Encoding", "gzip"), ("User-Agent", userAgent)]
-        if authorized { pairs.append(("Authorization", "*****")) }
+        if authorized { pairs.append(("Authorization", "Bearer \(FixtureBodies.accessToken)")) }
         return PeekHeaders(pairs + extra)
     }
 
@@ -84,7 +84,7 @@ enum Fixtures {
             requestHeaders: requestHeaders([("Content-Type", "application/json")], authorized: false),
             requestBody: .json(FixtureBodies.loginRequest),
             responseHeaders: jsonHeaders(FixtureBodies.loginResponse, [
-                ("Set-Cookie", "session=*****; Path=/; Domain=acme.dev; Max-Age=86400; Secure; HttpOnly; SameSite=Lax"),
+                ("Set-Cookie", "session=Pzrx7Ou9FBCrQX7A0nu_y100Dhd64Vm1; Path=/; Domain=acme.dev; Max-Age=86400; Secure; HttpOnly; SameSite=Lax"),
                 ("Set-Cookie", "locale=en-PT; Path=/; Expires=Thu, 23 Sep 2027 14:55:00 GMT"),
                 ("Cache-Control", "no-store"),
             ]),
@@ -99,7 +99,7 @@ enum Fixtures {
         entry(
             "f02", "GET", "https://api.acme.dev/v1/profile",
             at: 1.63, took: 526.9, status: 200,
-            requestHeaders: requestHeaders([("Cookie", "session=*****; locale=en-PT")]),
+            requestHeaders: requestHeaders([("Cookie", "session=Pzrx7Ou9FBCrQX7A0nu_y100Dhd64Vm1; locale=en-PT")]),
             responseHeaders: jsonHeaders(FixtureBodies.profile, [("ETag", "W/\"a1c9-18f\""), ("Cache-Control", "private, max-age=60")]),
             responseBody: .json(FixtureBodies.profile)
         ),
