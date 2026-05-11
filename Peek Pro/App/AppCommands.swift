@@ -53,12 +53,6 @@ struct AppCommands: Commands {
     private var viewCommands: some Commands {
         CommandGroup(after: .sidebar) {
             Section {
-                ForEach(SidebarPanel.allCases) { panel in
-                    Toggle(panel.title, isOn: binding(\.panel, panel))
-                        .keyboardShortcut(panel.shortcut, modifiers: .command)
-                }
-            }
-            Section {
                 Toggle("As Table", isOn: binding(\.viewMode, .table))
                     .keyboardShortcut("1", modifiers: [.control, .command])
                 Toggle("As List", isOn: binding(\.viewMode, .list))
@@ -128,12 +122,6 @@ struct AppCommands: Commands {
                 .disabled(model.selectedLiveSession == nil || model.selectedEntries.isEmpty)
 
             Divider()
-
-            Button("Show Info") {
-                if let id = model.selectedSessionID { model.showInfo(id) }
-            }
-            .keyboardShortcut("i")
-            .disabled(model.selectedSessionID == nil)
 
             Button("Disconnect") { model.disconnectSelectedSession() }
                 .disabled(!model.canPauseSelectedSession)

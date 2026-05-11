@@ -5,7 +5,6 @@ import Observation
 @Observable
 final class AppModel {
     let store: MockStore
-    var panel: SidebarPanel = .sessions
     var selectedSessionID: PeekSessionID? {
         didSet {
             guard oldValue != selectedSessionID else { return }
@@ -51,11 +50,6 @@ final class AppModel {
 
     private func markAllSeen() {
         unseenBaseline = isFollowing ? nil : selectedEntries.count
-    }
-
-    func showInfo(_ id: PeekSessionID) {
-        selectedSessionID = id
-        panel = .info
     }
 
     func removeSession(_ id: PeekSessionID) {

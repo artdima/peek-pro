@@ -77,7 +77,6 @@ struct SessionsPanel: View {
 
     @ViewBuilder
     private func liveSessionMenu(_ session: PeekLiveSession) -> some View {
-        Button("Show Info") { model.showInfo(session.id) }
         if session.connection != .disconnected {
             Button("Disconnect") { store.disconnect(session.id) }
         }
@@ -87,7 +86,6 @@ struct SessionsPanel: View {
 
     @ViewBuilder
     private func fileMenu(_ file: PeekSessionFile) -> some View {
-        Button("Show Info") { model.showInfo(file.id) }
         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([file.url]) }
         Divider()
         Button("Close") { model.closeFile(file.id) }
