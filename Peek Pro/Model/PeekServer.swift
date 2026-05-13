@@ -21,8 +21,8 @@ nonisolated struct PeekRejectedConnection: Identifiable, Hashable, Sendable {
 
     let id: String
     let address: String
-    let appName: String?
-    let deviceName: String?
+    let name: String?
+    let platform: PeekPlatform?
     let reason: Reason
     let at: Date
 }

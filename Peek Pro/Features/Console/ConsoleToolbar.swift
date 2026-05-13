@@ -69,8 +69,7 @@ private struct SessionPicker: View {
                 if !model.store.sessions.isEmpty {
                     Section("Devices") {
                         ForEach(model.store.sessions) { session in
-                            Label("\(session.info.device.name) — \(session.info.app.name)",
-                                  systemImage: session.info.device.symbolName)
+                            Label(session.title, systemImage: session.info.platform.symbolName)
                                 .tag(session.id as PeekSessionID?)
                         }
                     }
@@ -101,9 +100,9 @@ private struct SessionPicker: View {
                 .labelStyle(.titleAndIcon)
         } else if let session = model.selectedLiveSession {
             HStack(spacing: 6) {
-                Image(systemName: session.info.device.symbolName)
-                Text(session.info.device.name)
-                Text("(\(session.info.device.systemTitle))")
+                Image(systemName: session.info.platform.symbolName)
+                Text(session.title)
+                Text("(\(session.info.systemTitle))")
                     .foregroundStyle(.secondary)
                 ConnectionDot(state: session.connection)
             }

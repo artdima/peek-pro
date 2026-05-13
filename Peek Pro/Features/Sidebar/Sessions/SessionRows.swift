@@ -1,36 +1,5 @@
 import SwiftUI
 
-struct AppHeader: View {
-    static let iconSide: CGFloat = 22
-    static let spacing: CGFloat = 8
-    /// Devices sit under the app name, not under its icon.
-    static let childIndent = iconSide + spacing
-
-    let app: PeekApp
-
-    var body: some View {
-        HStack(spacing: Self.spacing) {
-            Text(String(app.name.prefix(1)))
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: Self.iconSide, height: Self.iconSide)
-                .background(.tint, in: RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 0) {
-                Text(app.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text(app.identifier)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .lineLimit(1)
-        }
-        .textCase(nil)
-        .padding(.vertical, 2)
-        .help(app.version.map { "\(app.name) \($0)" } ?? app.name)
-    }
-}
-
 struct LiveSessionRow: View {
     let session: PeekLiveSession
     let count: Int
@@ -38,27 +7,27 @@ struct LiveSessionRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 1) {
-                Text(session.info.device.name)
+                Text(session.title)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .lineLimit(1)
         } icon: {
-            Image(systemName: session.info.device.symbolName)
+            Image(systemName: session.info.platform.symbolName)
                 .overlay(alignment: .bottomTrailing) {
                     ConnectionDot(state: session.connection)
                         .offset(x: 4, y: 3)
                 }
         }
-        .padding(.leading, AppHeader.childIndent)
         .badge(count)
-        .help("\(session.address) · connected \(PeekFormat.dateTime(session.connectedAt))")
+        .help("\(session.address) · Peek \(session.info.peekVersion) · connected \(PeekFormat.dateTime(session.connectedAt))")
     }
 
     private var subtitle: String {
-        var parts = [session.info.device.systemTitle]
-        if session.info.device.isSimulator { parts.append("Simulator") }
+        var parts = [session.info.systemTitle]
+        // Without a name the address is already in the title.
+        if session.info.name != nil { parts.append(session.address) }
         switch session.connection {
         case .connecting: parts.append("Connecting…")
         case .disconnected: parts.append("Disconnected")
@@ -166,7 +135,7 @@ struct RejectedConnectionRow: View {
     }
 
     private var title: String {
-        [connection.deviceName, connection.appName].compactMap(\.self).joined(separator: " · ")
+        connection.name ?? [connection.platform?.title, connection.address].compactMap(\.self).joined(separator: " · ")
     }
 
     private var reason: String { connection.reason.title }

@@ -87,7 +87,7 @@ struct EntryWindow: View {
     private var subtitle: String {
         guard let session = model.session(for: windowID), let info = model.store.info(for: session) else { return "" }
         if let file = model.store.file(session) { return file.name }
-        return "\(info.app.name) · \(info.device.name)"
+        return model.store.session(session)?.title ?? info.name ?? info.systemTitle
     }
 }
 

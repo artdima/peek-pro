@@ -9,27 +9,21 @@ nonisolated enum PeekPlatform: String, CaseIterable, Sendable {
     case web
 }
 
-nonisolated struct PeekApp: Hashable, Sendable {
-    let name: String
-    /// Bundle id or package name.
-    let identifier: String
-    let version: String?
-}
-
-nonisolated struct PeekDevice: Hashable, Sendable {
-    let name: String
-    let model: String?
-    let platform: PeekPlatform
-    let osVersion: String
-    let isSimulator: Bool
-}
-
-/// What the device says about itself: the `.peek` file header and the `hello` frame.
+/// What a client says about itself: the `.peek` file header and the `hello` frame.
+/// Pure Dart can't learn an app's name, bundle id or the device model without a plugin, so none of them are here.
 nonisolated struct PeekSessionInfo: Hashable, Sendable {
-    let app: PeekApp
-    let device: PeekDevice
+    /// Given by the app in `PeekRemote(name:)`, if it chose to.
+    let name: String?
+    let platform: PeekPlatform
+    /// Only where Dart reports it readably (iOS, macOS); Android gives the Linux kernel, so it stays `nil`.
+    let osVersion: String?
     let peekVersion: String
     let startedAt: Date
+
+    /// "iOS 26.0", or just "Android" when the version isn't known.
+    var systemTitle: String {
+        osVersion.map { "\(platform.title) \($0)" } ?? platform.title
+    }
 }
 
 nonisolated enum PeekSessionID: Hashable, Sendable {
@@ -54,6 +48,11 @@ nonisolated struct PeekLiveSession: Identifiable, Hashable, Sendable {
     var droppedCount: Int
 
     var id: PeekSessionID { .live(key) }
+
+    /// The name the app gave, or its platform and address when it gave none.
+    var title: String {
+        info.name ?? "\(info.platform.title) · \(address)"
+    }
 }
 
 nonisolated struct PeekSessionFile: Identifiable, Hashable, Sendable {

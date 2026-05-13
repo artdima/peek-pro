@@ -120,22 +120,15 @@ extension PeekPlatform {
         case .web: "Web"
         }
     }
-}
 
-extension PeekDevice {
     nonisolated var symbolName: String {
-        switch platform {
-        case .iOS: model?.hasPrefix("iPad") == true ? "ipad" : "iphone"
+        switch self {
+        case .iOS: "iphone"
         case .android: "candybarphone"
         case .macOS: "laptopcomputer"
         case .windows: "pc"
         case .linux: "desktopcomputer"
         case .web: "globe"
         }
-    }
-
-    /// "iOS 26.0", "Android 16"; web reports the host OS instead.
-    nonisolated var systemTitle: String {
-        platform == .web ? osVersion : "\(platform.title) \(osVersion)"
     }
 }

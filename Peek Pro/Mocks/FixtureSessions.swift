@@ -1,15 +1,6 @@
 import Foundation
 
 enum FixtureSessions {
-    static let shop = PeekApp(name: "Acme Shop", identifier: "dev.acme.shop", version: "3.4.0 (412)")
-    static let admin = PeekApp(name: "Acme Admin", identifier: "dev.acme.admin", version: "1.2.0 (57)")
-
-    static let iPhone = PeekDevice(name: "iPhone 16 Pro", model: "iPhone17,1", platform: .iOS, osVersion: "26.0", isSimulator: false)
-    static let pixel = PeekDevice(name: "Pixel 9", model: "Google Pixel 9", platform: .android, osVersion: "16", isSimulator: false)
-    static let iPad = PeekDevice(name: "iPad Air 11-inch (M3)", model: "iPad15,3", platform: .iOS, osVersion: "26.0", isSimulator: true)
-    static let chrome = PeekDevice(name: "Chrome 141", model: nil, platform: .web, osVersion: "macOS 26.0", isSimulator: false)
-    static let pixel8 = PeekDevice(name: "Pixel 8", model: "Google Pixel 8", platform: .android, osVersion: "15", isSimulator: false)
-
     static let peekVersion = "2.0.0"
 
     static let server = PeekServerState(
@@ -20,13 +11,13 @@ enum FixtureSessions {
         token: "k7q4-mx2p-9vd3"
     )
 
-    static func info(_ app: PeekApp, _ device: PeekDevice, startedAt: Date) -> PeekSessionInfo {
-        PeekSessionInfo(app: app, device: device, peekVersion: peekVersion, startedAt: startedAt)
+    static func info(_ name: String?, _ platform: PeekPlatform, _ osVersion: String? = nil, startedAt: Date) -> PeekSessionInfo {
+        PeekSessionInfo(name: name, platform: platform, osVersion: osVersion, peekVersion: peekVersion, startedAt: startedAt)
     }
 
     static let iPhoneSession = PeekLiveSession(
         key: "iphone",
-        info: info(shop, iPhone, startedAt: Fixtures.start.addingTimeInterval(-2)),
+        info: info("Acme Shop", .iOS, "26.0", startedAt: Fixtures.start.addingTimeInterval(-2)),
         connection: .connected,
         address: "192.168.1.23",
         connectedAt: Fixtures.start.addingTimeInterval(-2),
@@ -36,7 +27,7 @@ enum FixtureSessions {
 
     static let pixelSession = PeekLiveSession(
         key: "pixel",
-        info: info(shop, pixel, startedAt: Fixtures.start.addingTimeInterval(-300)),
+        info: info("Acme Shop", .android, startedAt: Fixtures.start.addingTimeInterval(-300)),
         connection: .connected,
         address: "127.0.0.1",
         connectedAt: Fixtures.start.addingTimeInterval(-300),
@@ -46,7 +37,7 @@ enum FixtureSessions {
 
     static let chromeSession = PeekLiveSession(
         key: "chrome",
-        info: info(admin, chrome, startedAt: Fixtures.start.addingTimeInterval(60)),
+        info: info("Acme Admin", .web, startedAt: Fixtures.start.addingTimeInterval(60)),
         connection: .connecting,
         address: "127.0.0.1",
         connectedAt: Fixtures.start.addingTimeInterval(60),
@@ -56,7 +47,7 @@ enum FixtureSessions {
 
     static let iPadSession = PeekLiveSession(
         key: "ipad",
-        info: info(shop, iPad, startedAt: Fixtures.start.addingTimeInterval(-3_600)),
+        info: info(nil, .iOS, "26.0", startedAt: Fixtures.start.addingTimeInterval(-3_600)),
         connection: .disconnected,
         address: "127.0.0.1",
         connectedAt: Fixtures.start.addingTimeInterval(-3_600),
@@ -68,7 +59,7 @@ enum FixtureSessions {
         url: URL(filePath: "/Users/Shared/Peek/peek-acme-shop-2026-09-22T18-41.peek"),
         byteCount: 217_344,
         modifiedAt: Fixtures.start.addingTimeInterval(-72_000),
-        info: info(shop, iPhone, startedAt: Fixtures.start.addingTimeInterval(-73_000)),
+        info: info("Acme Shop", .iOS, "26.0", startedAt: Fixtures.start.addingTimeInterval(-73_000)),
         formatVersion: 1,
         skippedLines: 0
     )
@@ -77,7 +68,7 @@ enum FixtureSessions {
         url: URL(filePath: "/Users/Shared/Peek/checkout-crash.peek"),
         byteCount: 48_120,
         modifiedAt: Fixtures.start.addingTimeInterval(-259_200),
-        info: info(shop, pixel8, startedAt: Fixtures.start.addingTimeInterval(-260_000)),
+        info: info("Acme Shop", .android, startedAt: Fixtures.start.addingTimeInterval(-260_000)),
         formatVersion: 1,
         skippedLines: 2
     )
@@ -86,7 +77,7 @@ enum FixtureSessions {
         url: URL(filePath: "/Users/Shared/Peek/from-peek-2.1.peek"),
         byteCount: 96_310,
         modifiedAt: Fixtures.start.addingTimeInterval(-3_600),
-        info: info(shop, iPhone, startedAt: Fixtures.start.addingTimeInterval(-4_000)),
+        info: info("Acme Shop", .iOS, "26.1", startedAt: Fixtures.start.addingTimeInterval(-4_000)),
         formatVersion: 2,
         skippedLines: 0
     )
@@ -95,7 +86,7 @@ enum FixtureSessions {
         url: URL(filePath: "/Users/Shared/Peek/prerelease-demo.peek"),
         byteCount: 12_004,
         modifiedAt: Fixtures.start.addingTimeInterval(-2_592_000),
-        info: PeekSessionInfo(app: admin, device: pixel8, peekVersion: "1.9.0-dev", startedAt: Fixtures.start.addingTimeInterval(-2_600_000)),
+        info: PeekSessionInfo(name: nil, platform: .android, osVersion: nil, peekVersion: "1.9.0-dev", startedAt: Fixtures.start.addingTimeInterval(-2_600_000)),
         formatVersion: 0,
         skippedLines: 0,
         failure: .unsupportedFormat(version: 0)
@@ -111,16 +102,16 @@ enum FixtureSessions {
         PeekRejectedConnection(
             id: "r1",
             address: "192.168.1.41",
-            appName: "Acme Shop",
-            deviceName: "Galaxy S24",
+            name: "Acme Shop",
+            platform: .android,
             reason: .invalidToken,
             at: Fixtures.start.addingTimeInterval(-40)
         ),
         PeekRejectedConnection(
             id: "r2",
             address: "192.168.1.57",
-            appName: "Acme Courier",
-            deviceName: "iPhone 13",
+            name: nil,
+            platform: .iOS,
             reason: .unsupportedProtocol(version: 3),
             at: Fixtures.start.addingTimeInterval(-15)
         ),

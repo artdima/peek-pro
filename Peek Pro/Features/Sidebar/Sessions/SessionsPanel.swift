@@ -22,15 +22,13 @@ struct SessionsPanel: View {
     private var sessionList: some View {
         @Bindable var model = model
         return List(selection: $model.selectedSessionID) {
-            ForEach(appGroups) { group in
-                Section {
-                    ForEach(group.sessions) { session in
+            if !store.sessions.isEmpty {
+                Section("Devices") {
+                    ForEach(store.sessions) { session in
                         LiveSessionRow(session: session, count: store.entries(in: session.id).count)
                             .tag(session.id)
                             .contextMenu { liveSessionMenu(session) }
                     }
-                } header: {
-                    AppHeader(app: group.app)
                 }
             }
             if !store.files.isEmpty {
@@ -63,18 +61,6 @@ struct SessionsPanel: View {
         .listStyle(.sidebar)
     }
 
-    private var appGroups: [AppGroup] {
-        var groups: [AppGroup] = []
-        for session in store.sessions {
-            if let index = groups.firstIndex(where: { $0.app.identifier == session.info.app.identifier }) {
-                groups[index].sessions.append(session)
-            } else {
-                groups.append(AppGroup(app: session.info.app, sessions: [session]))
-            }
-        }
-        return groups
-    }
-
     @ViewBuilder
     private func liveSessionMenu(_ session: PeekLiveSession) -> some View {
         if session.connection != .disconnected {
@@ -90,13 +76,6 @@ struct SessionsPanel: View {
         Divider()
         Button("Close") { model.closeFile(file.id) }
     }
-}
-
-private struct AppGroup: Identifiable {
-    let app: PeekApp
-    var sessions: [PeekLiveSession]
-
-    var id: String { app.identifier }
 }
 
 #Preview("Live") {

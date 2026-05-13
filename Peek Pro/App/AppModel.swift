@@ -141,7 +141,7 @@ final class AppModel {
     }
 
     var selectedDeviceName: String {
-        selectedSessionID.flatMap { store.info(for: $0) }?.device.name ?? "the device"
+        selectedLiveSession?.title ?? "the device"
     }
 
     func loadBody(_ key: PeekBodyLoadKey) {
@@ -156,12 +156,13 @@ final class AppModel {
     var windowTitle: String {
         guard let id = selectedSessionID else { return "Peek Pro" }
         if let file = store.file(id) { return file.name }
-        return store.info(for: id)?.app.name ?? "Peek Pro"
+        return store.session(id)?.title ?? "Peek Pro"
     }
 
     var windowSubtitle: String {
         guard let id = selectedSessionID, let info = store.info(for: id) else { return "" }
-        if store.file(id) != nil { return "\(info.app.name) · \(info.device.name)" }
-        return "\(info.device.name) · \(info.device.systemTitle)"
+        if store.file(id) != nil { return [info.name, info.systemTitle].compactMap(\.self).joined(separator: " · ") }
+        guard let session = store.session(id) else { return info.systemTitle }
+        return info.name == nil ? info.systemTitle : "\(info.systemTitle) · \(session.address)"
     }
 }

@@ -23,8 +23,7 @@ struct InfoPanel: View {
                         }
                         .padding(.top, 8)
                     }
-                    InfoTable(title: "App", rows: appRows(info))
-                    InfoTable(title: "Device", rows: deviceRows(info))
+                    InfoTable(title: "Client", rows: clientRows(info))
                     InfoTable(title: "Requests", rows: requestRows(model.store.entries(in: id)))
                 }
                 .padding(14)
@@ -80,23 +79,12 @@ struct InfoPanel: View {
         return "Version \(file.formatVersion)"
     }
 
-    private func appRows(_ info: PeekSessionInfo) -> [InfoRow] {
+    private func clientRows(_ info: PeekSessionInfo) -> [InfoRow] {
         [
-            InfoRow(title: "Name", value: info.app.name),
-            InfoRow(title: "Identifier", value: info.app.identifier, isMonospaced: true),
-            InfoRow(title: "Version", value: info.app.version ?? "—"),
+            InfoRow(title: "Name", value: info.name ?? "Not set"),
+            InfoRow(title: "System", value: info.systemTitle),
             InfoRow(title: "Peek", value: info.peekVersion),
             InfoRow(title: "Started", value: PeekFormat.dateTime(info.startedAt)),
-        ]
-    }
-
-    private func deviceRows(_ info: PeekSessionInfo) -> [InfoRow] {
-        let device = info.device
-        return [
-            InfoRow(title: "Name", value: device.name),
-            InfoRow(title: "Model", value: device.model ?? "—", isMonospaced: device.model != nil),
-            InfoRow(title: "System", value: device.systemTitle),
-            InfoRow(title: "Kind", value: device.isSimulator ? "Simulator" : "Physical device"),
         ]
     }
 
@@ -123,14 +111,14 @@ private struct SessionHeader: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: info.device.symbolName)
+            Image(systemName: info.platform.symbolName)
                 .font(.system(size: 28, weight: .light))
                 .foregroundStyle(.secondary)
                 .frame(width: 36)
             VStack(alignment: .leading, spacing: 2) {
-                Text(info.app.name)
+                Text(info.name ?? info.platform.title)
                     .font(.headline)
-                Text("\(info.device.name) · \(info.device.systemTitle)")
+                Text(info.systemTitle)
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

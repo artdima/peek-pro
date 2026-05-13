@@ -105,6 +105,7 @@ struct WaitingForDevicesView: View {
           peek,
           endpoint: PeekRemoteEndpoint('\(server.addresses.first ?? "localhost")', \(server.port)),
           token: '\(server.token)',
+          name: 'My App', // optional: how Peek Pro lists this app
         ).start();
         """
     }
