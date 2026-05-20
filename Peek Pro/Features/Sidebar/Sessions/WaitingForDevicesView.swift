@@ -215,18 +215,18 @@ struct ServerStatusFooter: View {
 #Preview("Waiting") {
     WaitingForDevicesView()
         .environment(AppModel.preview(.waiting))
-        .frame(width: 270, height: 700)
+        .frame(width: 290, height: 700)
 }
 
 #Preview("Port in Use — Dark") {
     WaitingForDevicesView()
         .environment(AppModel.preview(.portInUse))
-        .frame(width: 270, height: 520)
+        .frame(width: 290, height: 520)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Rejected") {
     WaitingForDevicesView()
         .environment(AppModel.preview(.rejected))
-        .frame(width: 270, height: 760)
+        .frame(width: 290, height: 760)
 }

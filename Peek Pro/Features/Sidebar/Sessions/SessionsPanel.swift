@@ -81,18 +81,18 @@ struct SessionsPanel: View {
 #Preview("Live") {
     SessionsPanel()
         .environment(AppModel.preview(.live))
-        .frame(width: 270, height: 560)
+        .frame(width: 290, height: 560)
 }
 
 #Preview("Disconnected — Dark") {
     SessionsPanel()
         .environment(AppModel.preview(.disconnected))
-        .frame(width: 270, height: 560)
+        .frame(width: 290, height: 560)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Files") {
     SessionsPanel()
         .environment(AppModel.preview(.file))
-        .frame(width: 270, height: 560)
+        .frame(width: 290, height: 560)
 }

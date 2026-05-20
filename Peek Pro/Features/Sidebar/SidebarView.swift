@@ -11,5 +11,5 @@ struct SidebarView: View {
 #Preview {
     SidebarView()
         .environment(AppModel.preview(.live))
-        .frame(width: 260, height: 500)
+        .frame(width: 290, height: 500)
 }

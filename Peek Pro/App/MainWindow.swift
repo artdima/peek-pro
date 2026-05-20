@@ -8,7 +8,7 @@ struct MainWindow: View {
         @Bindable var model = model
         NavigationSplitView {
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 380)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 290, max: 400)
         } detail: {
             ConsoleSplitView(placement: detailPlacement)
         }
