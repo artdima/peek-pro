@@ -54,7 +54,7 @@ struct WaitingForDevicesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 26)
+                        .padding(.leading, SidebarRowMetrics.titleInset)
                 }
             }
         }

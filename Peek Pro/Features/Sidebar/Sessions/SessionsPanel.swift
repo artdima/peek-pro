@@ -25,7 +25,11 @@ struct SessionsPanel: View {
             if !store.sessions.isEmpty {
                 Section("Devices") {
                     ForEach(store.sessions) { session in
-                        LiveSessionRow(session: session, count: store.entries(in: session.id).count)
+                        LiveSessionRow(
+                            session: session,
+                            count: store.entries(in: session.id).count,
+                            isPaused: store.isPaused(session.id)
+                        )
                             .tag(session.id)
                             .contextMenu { liveSessionMenu(session) }
                     }
