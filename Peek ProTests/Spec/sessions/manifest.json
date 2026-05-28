@@ -1,0 +1,97 @@
+{
+  "basic.peek": {
+    "formatVersion": 1,
+    "newerFormat": false,
+    "entries": [
+      "e1",
+      "e2",
+      "e3",
+      "e4",
+      "e5",
+      "e6",
+      "big",
+      "long-url",
+      "upload",
+      "redirect",
+      "cancelled",
+      "not-found",
+      "image",
+      "streamed",
+      "spec-truncated",
+      "spec-timed",
+      "spec-crashed"
+    ],
+    "skipped": 0
+  },
+  "header-only.peek": {
+    "formatVersion": 1,
+    "newerFormat": false,
+    "entries": [],
+    "skipped": 0
+  },
+  "broken-line.peek": {
+    "formatVersion": 1,
+    "newerFormat": false,
+    "entries": [
+      "e1",
+      "e2",
+      "e3",
+      "e4",
+      "e5",
+      "e6"
+    ],
+    "skipped": 2
+  },
+  "appended.peek": {
+    "formatVersion": 1,
+    "newerFormat": false,
+    "entries": [
+      "e4",
+      "e1"
+    ],
+    "skipped": 0
+  },
+  "unknown-keys.peek": {
+    "formatVersion": 1,
+    "newerFormat": false,
+    "entries": [
+      "e1",
+      "e2",
+      "e3",
+      "e4",
+      "e5",
+      "e6",
+      "big",
+      "long-url",
+      "upload",
+      "redirect",
+      "cancelled",
+      "not-found",
+      "image",
+      "streamed",
+      "spec-truncated",
+      "spec-timed",
+      "spec-crashed"
+    ],
+    "skipped": 0
+  },
+  "future-version.peek": {
+    "formatVersion": 2,
+    "newerFormat": true,
+    "entries": [
+      "e1",
+      "e3",
+      "e5"
+    ],
+    "skipped": 1
+  },
+  "old-version.peek": {
+    "error": true
+  },
+  "not-a-session.peek": {
+    "error": true
+  },
+  "empty.peek": {
+    "error": true
+  }
+}

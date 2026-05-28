@@ -1,0 +1,10 @@
+{"format":"peek","formatVersion":1,"peekVersion":"2.0.0","name":"Peek fixtures","platform":"ios","osVersion":"18.0","startedAt":"2026-09-10T12:00:00.000Z"}
+{"id":"e1","source":"dio","startedAt":"2026-09-10T12:00:00.000Z","completedAt":"2026-09-10T12:00:00.120Z","request":{"method":"GET","url":"https://api.example.com/users"},"response":{"status":200,"headers":[["Content-Type","application/json; charset=utf-8"]],"body":{"kind":"text","text":"body of e1","type":"application/json; charset=utf-8"}}}
+{"id":"e2","source":"dio","startedAt":"2026-09-10T12:00:01.000Z","completedAt":"2026-09-10T12:00:01.300Z","request":{"method":"POST","url":"https://api.example.com/login"},"response":{"status":401,"headers":[["Content-Type","application/json"]],"body":{"kind":"text","text":"body of e2","type":"application/json"}}}
+{"id":"e3","source":"dio","startedAt":"2026-09-10T12:00:02.000Z","completedAt":"2026-09-10T12:00:02.040Z","request":{"method":"GET","url":"https://cdn.example.com/logo.png"},"response":{"status":200,"headers":[["Content-Type","image/png"]],"body":{"kind":"text","text":"body of e3","type":"image/png"}}}
+{"id":"e1","source":"dio","startedAt":"2026-09-10T12:00:00.000Z","completedAt":"2026-09-10T12:00:00.120Z","request":{"method":"GET","url":"https://api.example.com/users"},"
+{"id":"no-request","source":"dio","startedAt":"2026-09-10T12:00:03.000Z"}
+
+{"id":"e4","source":"talker","startedAt":"2026-09-10T12:00:03.000Z","request":{"method":"GET","url":"https://api.example.com/slow"}}
+{"id":"e5","source":"talker","startedAt":"2026-09-10T12:00:04.000Z","completedAt":"2026-09-10T12:00:09.000Z","pinned":true,"request":{"method":"DELETE","url":"https://api.example.com/users/1"},"failure":{"kind":"timeout","message":"slow"}}
+{"id":"e6","source":"dio","startedAt":"2026-09-10T12:00:05.000Z","completedAt":"2026-09-10T12:00:05.800Z","request":{"method":"GET","url":"https://other.example.com/health"},"response":{"status":503,"headers":[["Content-Type","text/plain"]],"body":{"kind":"text","text":"body of e6","type":"text/plain"}}}

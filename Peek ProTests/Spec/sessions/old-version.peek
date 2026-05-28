@@ -1,0 +1,2 @@
+{"format":"peek","formatVersion":0,"peekVersion":"2.0.0","name":"Peek fixtures","platform":"ios","osVersion":"18.0","startedAt":"2026-09-10T12:00:00.000Z"}
+{"id":"e1","source":"dio","startedAt":"2026-09-10T12:00:00.000Z","completedAt":"2026-09-10T12:00:00.120Z","request":{"method":"GET","url":"https://api.example.com/users"},"response":{"status":200,"headers":[["Content-Type","application/json; charset=utf-8"]],"body":{"kind":"text","text":"body of e1","type":"application/json; charset=utf-8"}}}
