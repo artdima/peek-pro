@@ -1,12 +1,45 @@
 import Foundation
 
-nonisolated enum PeekPlatform: String, CaseIterable, Sendable {
-    case iOS = "ios"
+/// A platform a newer Peek names that this build doesn't know is kept as `other` and shown as it came.
+nonisolated enum PeekPlatform: Hashable, Sendable {
+    case iOS
     case android
-    case macOS = "macos"
+    case macOS
     case windows
     case linux
+    case fuchsia
     case web
+    /// Peek on the device couldn't tell.
+    case unknown
+    case other(String)
+
+    init(rawValue: String) {
+        self = switch rawValue {
+        case "ios": .iOS
+        case "android": .android
+        case "macos": .macOS
+        case "windows": .windows
+        case "linux": .linux
+        case "fuchsia": .fuchsia
+        case "web": .web
+        case "unknown": .unknown
+        default: .other(rawValue)
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .iOS: "ios"
+        case .android: "android"
+        case .macOS: "macos"
+        case .windows: "windows"
+        case .linux: "linux"
+        case .fuchsia: "fuchsia"
+        case .web: "web"
+        case .unknown: "unknown"
+        case .other(let value): value
+        }
+    }
 }
 
 /// What a client says about itself: the `.peek` file header and the `hello` frame.

@@ -49,6 +49,19 @@ enum Spec {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// The non-blank lines of a reference file, the header first.
+    static func lines(_ name: String) throws -> [String] {
+        String(decoding: try data(name), as: UTF8.self)
+            .split(separator: "\n")
+            .map { $0.hasSuffix("\r") ? String($0.dropLast()) : String($0) }
+            .filter { !$0.allSatisfy(\.isWhitespace) }
+    }
+
+    /// The entries of a reference file, header left out, each line decoded on its own.
+    static func entryLines(_ name: String) throws -> [String] {
+        Array(try lines(name).dropFirst())
+    }
+
     /// Every reference session file by name, with what reading it must give.
     static func manifest() throws -> [String: Expectation] {
         try JSONDecoder().decode([String: Expectation].self, from: data("manifest.json"))

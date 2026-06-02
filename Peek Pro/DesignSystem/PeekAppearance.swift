@@ -118,6 +118,9 @@ extension PeekPlatform {
         case .windows: "Windows"
         case .linux: "Linux"
         case .web: "Web"
+        case .fuchsia: "Fuchsia"
+        case .unknown: "Unknown Platform"
+        case .other(let name): name
         }
     }
 
@@ -129,6 +132,8 @@ extension PeekPlatform {
         case .windows: "pc"
         case .linux: "desktopcomputer"
         case .web: "globe"
+        case .fuchsia: "desktopcomputer"
+        case .unknown, .other: "questionmark.circle"
         }
     }
 }
