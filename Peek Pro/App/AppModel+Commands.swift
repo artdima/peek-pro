@@ -43,11 +43,6 @@ extension AppModel {
         store.disconnect(id)
     }
 
-    func openRecent(_ file: PeekSessionFile) {
-        store.openDemoFiles()
-        selectedSessionID = file.id
-    }
-
     private func copy(_ text: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)

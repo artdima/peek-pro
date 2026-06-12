@@ -1,5 +1,6 @@
-import Foundation
+import AppKit
 import Observation
+import UniformTypeIdentifiers
 
 /// State shared by the window and the menus; in Phase 3 `store` becomes the real session store.
 @Observable
@@ -32,6 +33,10 @@ final class AppModel {
     var viewMode = ConsoleViewMode(rawValue: UserDefaults.standard.string(forKey: ConsoleViewMode.storageKey) ?? "") ?? .table {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: ConsoleViewMode.storageKey) }
     }
+    private(set) var recentFiles = RecentFiles(defaults: .standard) {
+        didSet { recentFiles.save(to: .standard) }
+    }
+    var fileOpenError: FileOpenError?
     var listGrouping = ConsoleListGrouping(rawValue: UserDefaults.standard.string(forKey: ConsoleListGrouping.storageKey) ?? "") ?? .status {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
@@ -65,6 +70,51 @@ final class AppModel {
     func openDemoFiles() {
         store.openDemoFiles()
         selectedSessionID = store.files.first?.id
+    }
+
+    func open(_ urls: [URL]) {
+        for url in urls { open(url) }
+    }
+
+    func open(_ url: URL) {
+        Task {
+            do {
+                let loaded = try await Task.detached(priority: .userInitiated) {
+                    try PeekFileLoader.load(url)
+                }.value
+                store.addFile(loaded.file, entries: loaded.entries)
+                selectedSessionID = loaded.file.id
+                if let bookmark = loaded.bookmark {
+                    recentFiles.add(RecentFile(url: url, bookmark: bookmark))
+                }
+                NSDocumentController.shared.noteNewRecentDocumentURL(url)
+            } catch {
+                fileOpenError = FileOpenError(name: url.lastPathComponent, message: error.localizedDescription)
+            }
+        }
+    }
+
+    func openRecent(_ recent: RecentFile) {
+        guard let url = RecentFiles.resolve(recent.bookmark) else {
+            recentFiles.remove(recent.url)
+            fileOpenError = FileOpenError(name: recent.name, message: "The file was moved or deleted.")
+            return
+        }
+        open(url)
+    }
+
+    func clearRecentFiles() {
+        recentFiles.clear()
+    }
+
+    func showOpenPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.peekSession]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.message = "Choose Peek sessions to open."
+        guard panel.runModal() == .OK else { return }
+        open(panel.urls)
     }
 
     private func keepSelectionValid() {
@@ -165,4 +215,10 @@ final class AppModel {
         guard let session = store.session(id) else { return info.systemTitle }
         return info.name == nil ? info.systemTitle : "\(info.systemTitle) · \(session.address)"
     }
+}
+
+struct FileOpenError: Identifiable {
+    let id = UUID()
+    let name: String
+    let message: String
 }

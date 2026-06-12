@@ -2,7 +2,9 @@ import SwiftUI
 
 @main
 struct PeekProApp: App {
-    @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    private var model: AppModel { appDelegate.model }
 
     var body: some Scene {
         Window("Peek Pro", id: "main") {

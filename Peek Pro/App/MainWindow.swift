@@ -25,6 +25,24 @@ struct MainWindow: View {
                 Text(scope.title).tag(scope)
             }
         }
+        .dropDestination(for: URL.self) { urls, _ in
+            let sessions = urls.filter { $0.pathExtension.lowercased() == "peek" }
+            guard !sessions.isEmpty else { return false }
+            model.open(sessions)
+            return true
+        }
+        .alert(
+            model.fileOpenError.map { "Can't Open “\($0.name)”" } ?? "",
+            isPresented: Binding(
+                get: { model.fileOpenError != nil },
+                set: { if !$0 { model.fileOpenError = nil } }
+            ),
+            presenting: model.fileOpenError
+        ) { _ in
+            Button("OK") {}
+        } message: { error in
+            Text(error.message)
+        }
         .confirmationDialog(
             "Clear all requests from \(model.windowTitle)?",
             isPresented: $model.isConfirmingClear

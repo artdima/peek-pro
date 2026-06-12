@@ -23,15 +23,15 @@ struct AppCommands: Commands {
     private var fileCommands: some Commands {
         Group {
             CommandGroup(replacing: .newItem) {
-                Button("Open…") { model.openDemoFiles() }
+                Button("Open…") { model.showOpenPanel() }
                     .keyboardShortcut("o")
                 Menu("Open Recent") {
-                    ForEach([FixtureSessions.savedSession, FixtureSessions.bugReport]) { file in
-                        Button(file.name) { model.openRecent(file) }
+                    ForEach(model.recentFiles.items) { recent in
+                        Button(recent.name) { model.openRecent(recent) }
                     }
                     Divider()
-                    Button("Clear Menu") {}
-                        .disabled(true)
+                    Button("Clear Menu") { model.clearRecentFiles() }
+                        .disabled(model.recentFiles.items.isEmpty)
                 }
             }
             CommandGroup(after: .saveItem) {

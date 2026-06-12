@@ -88,9 +88,16 @@ final class MockStore {
         rejected.removeAll { $0.id == id }
     }
 
-    /// Stands in for opening a `.peek` file until the reader exists (Phase 2).
+    /// The demo files behind "Open Demo Session".
     func openDemoFiles() {
         loadFiles()
+    }
+
+    /// A file opened for real; opening the same file again replaces it.
+    func addFile(_ file: PeekSessionFile, entries: [PeekEntry]) {
+        files.removeAll { $0.id == file.id }
+        files.insert(file, at: 0)
+        entriesBySession[file.id] = entries
     }
 
     /// Pretends to fetch a body from the device; the map tile fails once so Retry can be seen.

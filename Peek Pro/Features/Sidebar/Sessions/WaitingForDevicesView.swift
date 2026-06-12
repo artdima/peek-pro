@@ -143,7 +143,7 @@ struct WaitingForDevicesView: View {
     private var actions: some View {
         VStack(spacing: 8) {
             Button {
-                model.openDemoFiles()
+                model.showOpenPanel()
             } label: {
                 Text("Open File…")
                     .frame(maxWidth: .infinity)

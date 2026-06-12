@@ -21,9 +21,22 @@
 		9E4844B03063D5F900C9A46E /* Peek ProTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Peek ProTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9E4844BB3063D5F900C9A46E /* Exceptions for "Peek Pro" folder in "Peek Pro" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/Info.plist,
+			);
+			target = 9E48448C3063D5F800C9A46E /* Peek Pro */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9E48448F3063D5F800C9A46E /* Peek Pro */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9E4844BB3063D5F900C9A46E /* Exceptions for "Peek Pro" folder in "Peek Pro" target */,
+			);
 			path = "Peek Pro";
 			sourceTree = "<group>";
 		};
@@ -334,6 +347,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Peek Pro/App/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Dmitrii Medyannik. MIT License.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -366,6 +380,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Peek Pro/App/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Dmitrii Medyannik. MIT License.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
