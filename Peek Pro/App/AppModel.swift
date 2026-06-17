@@ -33,18 +33,22 @@ final class AppModel {
     var viewMode = ConsoleViewMode(rawValue: UserDefaults.standard.string(forKey: ConsoleViewMode.storageKey) ?? "") ?? .table {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: ConsoleViewMode.storageKey) }
     }
-    private(set) var recentFiles = RecentFiles(defaults: .standard) {
-        didSet { recentFiles.save(to: .standard) }
+    private(set) var recentFiles = FileBookmarks.recent() {
+        didSet { recentFiles.save() }
+    }
+    @ObservationIgnored private var openFiles = FileBookmarks.open() {
+        didSet { openFiles.save() }
     }
     var fileOpenError: FileOpenError?
     var listGrouping = ConsoleListGrouping(rawValue: UserDefaults.standard.string(forKey: ConsoleListGrouping.storageKey) ?? "") ?? .status {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
 
-    init(store: MockStore = MockStore()) {
+    init(store: MockStore = MockStore(), restoresOpenFiles: Bool = true) {
         self.store = store
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
+        if restoresOpenFiles { reopenFiles() }
     }
 
     func selectScenario(_ scenario: MockScenario) {
@@ -64,6 +68,7 @@ final class AppModel {
 
     func closeFile(_ id: PeekSessionID) {
         store.closeFile(id)
+        if case .file(let url) = id { openFiles.remove(url) }
         keepSelectionValid()
     }
 
@@ -85,7 +90,8 @@ final class AppModel {
                 store.addFile(loaded.file, entries: loaded.entries)
                 selectedSessionID = loaded.file.id
                 if let bookmark = loaded.bookmark {
-                    recentFiles.add(RecentFile(url: url, bookmark: bookmark))
+                    recentFiles.add(FileBookmark(url: url, bookmark: bookmark))
+                    openFiles.add(FileBookmark(url: url, bookmark: bookmark))
                 }
                 NSDocumentController.shared.noteNewRecentDocumentURL(url)
             } catch {
@@ -94,8 +100,8 @@ final class AppModel {
         }
     }
 
-    func openRecent(_ recent: RecentFile) {
-        guard let url = RecentFiles.resolve(recent.bookmark) else {
+    func openRecent(_ recent: FileBookmark) {
+        guard let url = FileBookmarks.resolve(recent.bookmark) else {
             recentFiles.remove(recent.url)
             fileOpenError = FileOpenError(name: recent.name, message: "The file was moved or deleted.")
             return
@@ -105,6 +111,30 @@ final class AppModel {
 
     func clearRecentFiles() {
         recentFiles.clear()
+    }
+
+    /// Reads back the files that were open at quit, in their order; one that is gone is dropped quietly.
+    private func reopenFiles() {
+        let bookmarks = openFiles.items
+        guard !bookmarks.isEmpty else { return }
+        Task {
+            let loaded = await Task.detached(priority: .userInitiated) {
+                bookmarks.map { bookmark in
+                    FileBookmarks.resolve(bookmark.bookmark).flatMap { try? PeekFileLoader.load($0) }
+                }
+            }.value
+            for (bookmark, file) in zip(bookmarks, loaded) {
+                guard let file else {
+                    openFiles.remove(bookmark.url)
+                    continue
+                }
+                store.addFile(file.file, entries: file.entries, atTop: false)
+                if let fresh = file.bookmark, fresh != bookmark.bookmark {
+                    openFiles.replace(bookmark.url, with: FileBookmark(url: file.file.url, bookmark: fresh))
+                }
+            }
+            if selectedSessionID == nil { selectedSessionID = store.sessionIDs.first }
+        }
     }
 
     func showOpenPanel() {

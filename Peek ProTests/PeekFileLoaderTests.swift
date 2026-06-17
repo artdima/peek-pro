@@ -56,44 +56,102 @@ struct PeekFileLoaderTests {
     }
 }
 
-@Suite("Open Recent")
-struct RecentFilesTests {
-    private func recent(_ path: String) -> RecentFile {
-        RecentFile(url: URL(filePath: path), bookmark: Data(path.utf8))
+@Suite("File bookmarks")
+struct FileBookmarksTests {
+    private func bookmark(_ path: String) -> FileBookmark {
+        FileBookmark(url: URL(filePath: path), bookmark: Data(path.utf8))
+    }
+
+    private func list(_ items: [FileBookmark] = [], limit: Int = 10) -> FileBookmarks {
+        FileBookmarks(storageKey: "test", limit: limit, items: items)
     }
 
     @Test("puts the newest first and lists a file once")
     func order() {
-        var files = RecentFiles()
-        files.add(recent("/tmp/a.peek"))
-        files.add(recent("/tmp/b.peek"))
-        files.add(recent("/tmp/./a.peek"))
+        var files = list()
+        files.add(bookmark("/tmp/a.peek"))
+        files.add(bookmark("/tmp/b.peek"))
+        files.add(bookmark("/tmp/./a.peek"))
         #expect(files.items.map(\.name) == ["a.peek", "b.peek"])
     }
 
-    @Test("keeps at most ten")
+    @Test("keeps at most its limit")
     func limit() {
-        var files = RecentFiles()
-        for index in 0..<15 { files.add(recent("/tmp/\(index).peek")) }
-        #expect(files.items.count == RecentFiles.limit)
+        var files = list(limit: 10)
+        for index in 0..<15 { files.add(bookmark("/tmp/\(index).peek")) }
+        #expect(files.items.count == 10)
         #expect(files.items.first?.name == "14.peek")
         #expect(files.items.last?.name == "5.peek")
     }
 
-    @Test("removes and clears")
-    func removal() {
-        var files = RecentFiles([recent("/tmp/a.peek"), recent("/tmp/b.peek")])
+    @Test("removes, replaces in place and clears")
+    func editing() {
+        var files = list([bookmark("/tmp/a.peek"), bookmark("/tmp/b.peek"), bookmark("/tmp/c.peek")])
         files.remove(URL(filePath: "/tmp/a.peek"))
-        #expect(files.items.map(\.name) == ["b.peek"])
+        #expect(files.items.map(\.name) == ["b.peek", "c.peek"])
+        files.replace(URL(filePath: "/tmp/b.peek"), with: FileBookmark(url: URL(filePath: "/tmp/b.peek"), bookmark: Data("fresh".utf8)))
+        #expect(files.items.map(\.name) == ["b.peek", "c.peek"])
+        #expect(files.items.first?.bookmark == Data("fresh".utf8))
         files.clear()
         #expect(files.items.isEmpty)
     }
 
-    @Test("drops bookmarks that no longer resolve")
-    func unresolvable() throws {
-        let defaults = try #require(UserDefaults(suiteName: "RecentFilesTests"))
-        defer { defaults.removePersistentDomain(forName: "RecentFilesTests") }
-        RecentFiles([recent("/tmp/gone.peek")]).save(to: defaults)
-        #expect(RecentFiles(defaults: defaults).items.isEmpty)
+    @Test("keeps recent and open files apart and drops bookmarks that no longer resolve")
+    func storage() throws {
+        let defaults = try #require(UserDefaults(suiteName: "FileBookmarksTests"))
+        defer { defaults.removePersistentDomain(forName: "FileBookmarksTests") }
+        #expect(FileBookmarks.recent(defaults).storageKey != FileBookmarks.open(defaults).storageKey)
+        #expect(FileBookmarks.recent(defaults).limit == 10)
+        list([bookmark("/tmp/gone.peek")]).save(to: defaults)
+        #expect(defaults.array(forKey: "test")?.count == 1)
+        #expect(FileBookmarks(storageKey: "test", limit: 10, defaults: defaults).items.isEmpty)
+    }
+}
+
+@MainActor
+@Suite("Files in the store")
+struct StoreFilesTests {
+    private func opened() throws -> PeekLoadedFile {
+        try PeekFileLoader.load(try Spec.url("basic.peek"))
+    }
+
+    @Test("lists no demo files in a live session")
+    func noDemoFiles() {
+        #expect(MockStore(scenario: .live, isLive: false).files.isEmpty)
+    }
+
+    @Test("keeps an opened file across scenario switches, above the demo files")
+    func keepsOpenedFiles() throws {
+        let store = MockStore(scenario: .live, isLive: false)
+        let loaded = try opened()
+        store.addFile(loaded.file, entries: loaded.entries)
+        store.select(.waiting)
+        #expect(store.files.map(\.id) == [loaded.file.id])
+        #expect(store.entries(in: loaded.file.id).count == 17)
+        store.select(.file)
+        #expect(store.files.first?.id == loaded.file.id)
+        #expect(store.files.count > 1)
+    }
+
+    @Test("replaces a file opened twice, and forgets it once closed")
+    func reopenAndClose() throws {
+        let store = MockStore(scenario: .waiting, isLive: false)
+        let loaded = try opened()
+        store.addFile(loaded.file, entries: loaded.entries)
+        store.addFile(loaded.file, entries: Array(loaded.entries.prefix(3)))
+        #expect(store.files.count == 1)
+        #expect(store.entries(in: loaded.file.id).count == 3)
+        store.closeFile(loaded.file.id)
+        store.select(.live)
+        #expect(store.files.isEmpty)
+    }
+
+    @Test("drops demo files on a scenario switch")
+    func demoFilesAreNotKept() {
+        let store = MockStore(scenario: .waiting, isLive: false)
+        store.openDemoFiles()
+        #expect(!store.files.isEmpty)
+        store.select(.live)
+        #expect(store.files.isEmpty)
     }
 }

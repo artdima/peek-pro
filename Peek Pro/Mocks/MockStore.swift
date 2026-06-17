@@ -12,6 +12,7 @@ final class MockStore {
     private(set) var paused: Set<PeekSessionID> = []
     private(set) var bodyLoads: [PeekBodyLoadKey: PeekBodyLoadState] = [:]
     private var entriesBySession: [PeekSessionID: [PeekEntry]] = [:]
+    @ObservationIgnored private var openedFileIDs: Set<PeekSessionID> = []
 
     @ObservationIgnored private let isLive: Bool
     @ObservationIgnored private var ticker: Task<Void, Never>?
@@ -71,6 +72,7 @@ final class MockStore {
     func closeFile(_ id: PeekSessionID) {
         files.removeAll { $0.id == id }
         entriesBySession[id] = nil
+        openedFileIDs.remove(id)
     }
 
     func removeSession(_ id: PeekSessionID) {
@@ -93,11 +95,17 @@ final class MockStore {
         loadFiles()
     }
 
-    /// A file opened for real; opening the same file again replaces it.
-    func addFile(_ file: PeekSessionFile, entries: [PeekEntry]) {
-        files.removeAll { $0.id == file.id }
-        files.insert(file, at: 0)
+    /// A file opened for real; opening the same file again replaces it. It outlives scenario switches.
+    func addFile(_ file: PeekSessionFile, entries: [PeekEntry], atTop: Bool = true) {
+        if let index = files.firstIndex(where: { $0.id == file.id }) {
+            files[index] = file
+        } else if atTop {
+            files.insert(file, at: 0)
+        } else {
+            files.append(file)
+        }
         entriesBySession[file.id] = entries
+        openedFileIDs.insert(file.id)
     }
 
     /// Pretends to fetch a body from the device; the map tile fails once so Retry can be seen.
@@ -163,6 +171,8 @@ final class MockStore {
     }
 
     private func load(_ scenario: MockScenario) {
+        let opened = files.filter { openedFileIDs.contains($0.id) }
+        let openedEntries = opened.map { entriesBySession[$0.id] ?? [] }
         ticker?.cancel()
         ticker = nil
         pendingTemplates = [:]
@@ -201,6 +211,9 @@ final class MockStore {
             rejected = FixtureSessions.rejected
         }
 
+        files = opened + files.filter { !openedFileIDs.contains($0.id) }
+        for (file, entries) in zip(opened, openedEntries) { entriesBySession[file.id] = entries }
+
         if isLive && scenario == .live { startTicking() }
     }
 
@@ -214,7 +227,6 @@ final class MockStore {
         entriesBySession[FixtureSessions.iPhoneSession.id] = Fixtures.session
         entriesBySession[FixtureSessions.pixelSession.id] = FixtureSessions.pixelEntries
         entriesBySession[FixtureSessions.iPadSession.id] = FixtureSessions.iPadEntries
-        loadFiles()
     }
 
     private func loadFiles() {
