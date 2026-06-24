@@ -2,10 +2,12 @@ import AppKit
 import Observation
 import UniformTypeIdentifiers
 
-/// State shared by the window and the menus; in Phase 3 `store` becomes the real session store.
+/// State shared by the window and the menus.
 @Observable
 final class AppModel {
-    let store: MockStore
+    let store: SessionHub
+    /// Feeds `store` with mock devices until the server exists (Phase 5).
+    let mocks: MockFeed
     var selectedSessionID: PeekSessionID? {
         didSet {
             guard oldValue != selectedSessionID else { return }
@@ -44,15 +46,17 @@ final class AppModel {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
 
-    init(store: MockStore = MockStore(), restoresOpenFiles: Bool = true) {
+    init(scenario: MockScenario = .live, isLive: Bool = true, restoresOpenFiles: Bool = true) {
+        let store = SessionHub()
         self.store = store
+        mocks = MockFeed(hub: store, scenario: scenario, isLive: isLive)
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
         if restoresOpenFiles { reopenFiles() }
     }
 
     func selectScenario(_ scenario: MockScenario) {
-        store.select(scenario)
+        mocks.select(scenario)
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
     }
@@ -73,7 +77,7 @@ final class AppModel {
     }
 
     func openDemoFiles() {
-        store.openDemoFiles()
+        mocks.openDemoFiles()
         selectedSessionID = store.files.first?.id
     }
 

@@ -4,7 +4,7 @@ import SwiftUI
 struct SessionsPanel: View {
     @Environment(AppModel.self) private var model
 
-    private var store: MockStore { model.store }
+    private var store: SessionHub { model.store }
 
     var body: some View {
         Group {

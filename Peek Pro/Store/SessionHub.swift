@@ -1,0 +1,225 @@
+import Foundation
+import Observation
+
+/// Every source the window shows: live devices, `.peek` files, and the server they connect to.
+/// Screens read it and act through it; what feeds it — the mock scenarios now, the WebSocket server
+/// in Phase 5 — uses the feeding half below.
+@Observable
+final class SessionHub {
+    private(set) var server: PeekServerState
+    private(set) var sessions: [PeekLiveSession] = []
+    private(set) var files: [PeekSessionFile] = []
+    private(set) var rejected: [PeekRejectedConnection] = []
+    private(set) var paused: Set<PeekSessionID> = []
+    private(set) var bodyLoads: [PeekBodyLoadKey: PeekBodyLoadState] = [:]
+    private var stores: [PeekSessionID: SessionStore] = [:]
+
+    /// Files the user opened, as opposed to demo ones: `reset()` keeps them.
+    @ObservationIgnored private var openedFileIDs: Set<PeekSessionID> = []
+    /// Fetches a body that stayed on the device; nobody can until a device connection exists.
+    @ObservationIgnored var bodyLoader: ((PeekBodyLoadKey, PeekSessionID) -> Void)?
+
+    init(server: PeekServerState = PeekServerState(
+        status: .listening,
+        port: PeekServerState.defaultPort,
+        addresses: [],
+        bonjourName: nil,
+        token: PeekServerState.newToken()
+    )) {
+        self.server = server
+        applyServerSettings()
+    }
+
+    // MARK: Reading
+
+    var sessionIDs: [PeekSessionID] {
+        sessions.map(\.id) + files.map(\.id)
+    }
+
+    func entries(in id: PeekSessionID) -> [PeekEntry] {
+        stores[id]?.entries ?? []
+    }
+
+    func entry(_ entryID: PeekId, in id: PeekSessionID) -> PeekEntry? {
+        stores[id]?.entry(entryID)
+    }
+
+    func session(_ id: PeekSessionID) -> PeekLiveSession? {
+        sessions.first { $0.id == id }
+    }
+
+    func file(_ id: PeekSessionID) -> PeekSessionFile? {
+        files.first { $0.id == id }
+    }
+
+    func info(for id: PeekSessionID) -> PeekSessionInfo? {
+        session(id)?.info ?? file(id)?.info
+    }
+
+    func isPaused(_ id: PeekSessionID) -> Bool {
+        paused.contains(id)
+    }
+
+    // MARK: Acting
+
+    func togglePaused(_ id: PeekSessionID) {
+        if paused.contains(id) { paused.remove(id) } else { paused.insert(id) }
+    }
+
+    func clear(_ id: PeekSessionID) {
+        stores[id]?.clear()
+    }
+
+    func togglePin(_ entryID: PeekId, in id: PeekSessionID) {
+        stores[id]?.togglePin(entryID)
+    }
+
+    func closeFile(_ id: PeekSessionID) {
+        files.removeAll { $0.id == id }
+        stores[id] = nil
+        openedFileIDs.remove(id)
+    }
+
+    func removeSession(_ id: PeekSessionID) {
+        sessions.removeAll { $0.id == id }
+        stores[id] = nil
+        paused.remove(id)
+    }
+
+    func disconnect(_ id: PeekSessionID) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        sessions[index].connection = .disconnected
+        sessions[index].disconnectedAt = .now
+    }
+
+    func dismissRejected(_ id: String) {
+        rejected.removeAll { $0.id == id }
+    }
+
+    /// A file the user opened; opening the same file again replaces it.
+    func addFile(_ file: PeekSessionFile, entries: [PeekEntry], atTop: Bool = true) {
+        insertFile(file, entries: entries, atTop: atTop)
+        openedFileIDs.insert(file.id)
+    }
+
+    func loadBody(_ key: PeekBodyLoadKey, in id: PeekSessionID) {
+        guard bodyLoads[key] != .loading else { return }
+        guard let bodyLoader else {
+            bodyLoads[key] = .failed("The device isn't connected.")
+            return
+        }
+        bodyLoads[key] = .loading
+        bodyLoader(key, id)
+    }
+
+    /// Port and Bonjour name from Settings.
+    func applyServerSettings() {
+        let defaults = UserDefaults.standard
+        let port = defaults.integer(forKey: SettingsKey.port)
+        if port > 0 { server.port = port }
+        if defaults.object(forKey: SettingsKey.bonjourEnabled) as? Bool == false {
+            server.bonjourName = nil
+        } else if let name = defaults.string(forKey: SettingsKey.bonjourName), !name.isEmpty {
+            server.bonjourName = name
+        }
+    }
+
+    func regenerateToken() {
+        server.token = PeekServerState.newToken()
+    }
+
+    // MARK: Feeding
+
+    /// Drops everything but the files the user opened.
+    func reset() {
+        sessions = []
+        rejected = []
+        paused = []
+        bodyLoads = [:]
+        files.removeAll { !openedFileIDs.contains($0.id) }
+        stores = stores.filter { openedFileIDs.contains($0.key) }
+    }
+
+    func setServer(_ server: PeekServerState) {
+        self.server = server
+    }
+
+    func addSession(_ session: PeekLiveSession, entries: [PeekEntry] = []) {
+        sessions.removeAll { $0.id == session.id }
+        sessions.append(session)
+        stores[session.id] = SessionStore(entries: entries)
+    }
+
+    /// A file that stands in for one the user opened; `reset()` drops it.
+    func addDemoFile(_ file: PeekSessionFile, entries: [PeekEntry]) {
+        insertFile(file, entries: entries, atTop: false)
+    }
+
+    func setRejected(_ rejected: [PeekRejectedConnection]) {
+        self.rejected = rejected
+    }
+
+    func setPaused(_ paused: Set<PeekSessionID>) {
+        self.paused = paused
+    }
+
+    func upsert(_ entries: some Sequence<PeekEntry>, in id: PeekSessionID) {
+        stores[id, default: SessionStore()].upsert(contentsOf: entries)
+    }
+
+    func completeBodyLoad(_ key: PeekBodyLoadKey, in id: PeekSessionID, with body: PeekBody) {
+        bodyLoads[key] = nil
+        stores[id]?.update(key.entryID) { entry in
+            switch key.side {
+            case .response:
+                guard let response = entry.response else { return }
+                entry.response = PeekResponse(
+                    statusCode: response.statusCode,
+                    statusMessage: response.statusMessage,
+                    headers: response.headers,
+                    body: body,
+                    redirects: response.redirects
+                )
+            case .request:
+                let request = entry.request
+                entry = PeekEntry(
+                    id: entry.id,
+                    request: PeekRequest(method: request.method, uri: request.uri, headers: request.headers, body: body, extra: request.extra),
+                    startedAt: entry.startedAt,
+                    source: entry.source,
+                    response: entry.response,
+                    failure: entry.failure,
+                    completedAt: entry.completedAt,
+                    isPinned: entry.isPinned,
+                    timings: entry.timings
+                )
+            }
+        }
+    }
+
+    func failBodyLoad(_ key: PeekBodyLoadKey, message: String) {
+        bodyLoads[key] = .failed(message)
+    }
+
+    private func insertFile(_ file: PeekSessionFile, entries: [PeekEntry], atTop: Bool) {
+        if let index = files.firstIndex(where: { $0.id == file.id }) {
+            files[index] = file
+        } else if atTop {
+            files.insert(file, at: 0)
+        } else {
+            files.append(file)
+        }
+        stores[file.id] = SessionStore(entries: entries)
+    }
+}
+
+extension PeekServerState {
+    nonisolated static let defaultPort = 9741
+
+    /// Three groups of four, without look-alike characters, so it can be read out and typed.
+    nonisolated static func newToken() -> String {
+        let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
+        let groups = (0..<3).map { _ in String((0..<4).map { _ in alphabet.randomElement()! }) }
+        return groups.joined(separator: "-")
+    }
+}
