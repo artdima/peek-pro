@@ -36,16 +36,16 @@ struct ConsoleContentView: View {
             ContentUnavailableView("No Requests Yet", systemImage: "network",
                                    description: Text("Requests from the app appear here as they happen."))
         } else if model.filteredEntries.isEmpty {
-            if model.search.query.isEmpty {
+            if model.searchQuery.isEmpty {
                 ContentUnavailableView {
                     Label("No Matches", systemImage: "line.3.horizontal.decrease.circle")
                 } description: {
                     Text("No requests match the filters.")
                 } actions: {
-                    Button("Reset Filters") { model.filter = ConsoleFilter() }
+                    Button("Reset Filters") { model.resetFilters() }
                 }
             } else {
-                ContentUnavailableView.search(text: model.search.query)
+                ContentUnavailableView.search(text: model.searchQuery.trimmedText)
             }
         } else if entries.isEmpty {
             ContentUnavailableView {

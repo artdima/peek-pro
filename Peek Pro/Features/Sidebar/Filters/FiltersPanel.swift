@@ -5,7 +5,7 @@ struct FiltersPanel: View {
 
     var body: some View {
         @Bindable var model = model
-        let facets = ConsoleFacets(model.selectedEntries)
+        let facets = PeekFacets(model.selectedEntries)
         let filter = model.filter
 
         List {
@@ -14,8 +14,8 @@ struct FiltersPanel: View {
                     Text(summary)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Reset") { model.filter = ConsoleFilter() }
-                        .disabled(filter.isEmpty)
+                    Button("Reset") { model.resetFilters() }
+                        .disabled(!model.hasFilters)
                 }
                 .font(.callout)
             }
@@ -52,10 +52,10 @@ struct FiltersPanel: View {
 
             Section("Duration") {
                 HStack(spacing: 6) {
-                    TextField("Min", value: $model.filter.minDuration, format: .number, prompt: Text("Min"))
+                    TextField("Min", value: $model.filter.duration.minMilliseconds, format: .number, prompt: Text("Min"))
                     Text("–")
                         .foregroundStyle(.secondary)
-                    TextField("Max", value: $model.filter.maxDuration, format: .number, prompt: Text("Max"))
+                    TextField("Max", value: $model.filter.duration.maxMilliseconds, format: .number, prompt: Text("Max"))
                     Text("ms")
                         .foregroundStyle(.secondary)
                 }
@@ -64,8 +64,8 @@ struct FiltersPanel: View {
             }
 
             Section("Time") {
-                Picker("Time", selection: $model.filter.timeWindow) {
-                    ForEach(ConsoleFilter.TimeWindow.allCases) { window in
+                Picker("Time", selection: $model.timeWindow) {
+                    ForEach(ConsoleTimeWindow.allCases) { window in
                         Text(window.title).tag(window)
                     }
                 }
@@ -88,7 +88,7 @@ struct FiltersPanel: View {
     }
 
     @ViewBuilder
-    private func stringSection(_ title: String, _ values: [FacetValue<String>], _ selection: Binding<Set<String>>) -> some View {
+    private func stringSection(_ title: String, _ values: [PeekFacet<String>], _ selection: Binding<Set<String>>) -> some View {
         let all = merged(values, selection.wrappedValue)
         if !all.isEmpty {
             Section(title) {
@@ -100,13 +100,25 @@ struct FiltersPanel: View {
     }
 
     /// Keeps a checked value visible after the session stops having it, so it can still be unchecked.
-    private func merged<Value: Hashable & Sendable>(_ facets: [FacetValue<Value>], _ selected: Set<Value>) -> [FacetValue<Value>] {
+    private func merged<Value: Hashable & Sendable>(_ facets: [PeekFacet<Value>], _ selected: Set<Value>) -> [PeekFacet<Value>] {
         let present = Set(facets.map(\.value))
-        return facets + selected.subtracting(present).map { FacetValue(value: $0, count: 0) }
+        return facets + selected.subtracting(present).map { PeekFacet(value: $0, count: 0) }
     }
 
     private func codeTitle(_ code: Int) -> String {
         [String(code), PeekHTTPStatus.reasonPhrase(for: code)].compactMap(\.self).joined(separator: " ")
+    }
+}
+
+private extension PeekDurationRange {
+    var minMilliseconds: Double? {
+        get { min.map { $0.timeInterval * 1_000 } }
+        set { min = newValue.map { .milliseconds($0) } }
+    }
+
+    var maxMilliseconds: Double? {
+        get { max.map { $0.timeInterval * 1_000 } }
+        set { max = newValue.map { .milliseconds($0) } }
     }
 }
 
@@ -147,7 +159,7 @@ private struct FacetToggle: View {
     let model = AppModel.preview(.live)
     model.filter.statusClasses = [.clientError, .serverError]
     model.filter.methods = ["GET"]
-    model.filter.minDuration = 100
+    model.filter.duration = PeekDurationRange(min: .milliseconds(100))
     return FiltersPanel()
         .environment(model)
         .frame(width: 270, height: 900)

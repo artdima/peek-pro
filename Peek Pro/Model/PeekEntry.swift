@@ -47,7 +47,9 @@ nonisolated struct PeekEntry: Identifiable, Hashable, Sendable {
 
     var duration: Duration? {
         guard let completedAt else { return nil }
-        return max(Duration.zero, Duration.seconds(completedAt.timeIntervalSince(startedAt)))
+        // Rounded to microseconds, the format's precision: `Date` is a Double and 0.3 s comes back as 0.29999….
+        let microseconds = (completedAt.timeIntervalSince(startedAt) * 1_000_000).rounded()
+        return max(Duration.zero, .microseconds(Int64(microseconds)))
     }
 
     var isError: Bool { failure != nil || (statusClass?.isError ?? false) }

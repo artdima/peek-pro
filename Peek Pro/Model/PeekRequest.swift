@@ -21,7 +21,8 @@ nonisolated struct PeekRequest: Hashable, Sendable {
         self.extra = extra
     }
 
-    var host: String { uri.host() ?? "" }
+    /// Lowercase, like `Uri.host` in Dart.
+    var host: String { uri.host()?.lowercased() ?? "" }
     var path: String { uri.path() }
     var query: String? { uri.query() }
 

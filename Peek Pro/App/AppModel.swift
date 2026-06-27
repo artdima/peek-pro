@@ -16,7 +16,9 @@ final class AppModel {
         }
     }
     var selectedEntryIDs: Set<PeekId> = []
-    var filter = ConsoleFilter()
+    /// What the Filters panel sets; search and the time window are added in `filteredEntries`.
+    var filter = PeekFilter()
+    var timeWindow = ConsoleTimeWindow.any
     var searchText = ""
     var searchScope = ConsoleSearchScope.all
     var quickMode = ConsoleQuickMode.all
@@ -164,19 +166,28 @@ final class AppModel {
         selectedSessionID.flatMap { store.session($0) }
     }
 
-    var search: ConsoleSearch {
-        ConsoleSearch(text: searchText, scope: searchScope)
+    var searchQuery: PeekSearchQuery {
+        PeekSearchQuery(searchText, scopes: searchScope.scopes)
     }
 
     var urlHighlight: String {
-        searchScope == .all || searchScope == .url ? search.query : ""
+        searchQuery.scopes.contains(.url) ? searchQuery.trimmedText : ""
+    }
+
+    var hasFilters: Bool { !filter.isEmpty || timeWindow != .any }
+
+    func resetFilters() {
+        filter = PeekFilter()
+        timeWindow = .any
     }
 
     /// Filters and search; the quick modes count within this.
     var filteredEntries: [PeekEntry] {
-        let search = search
-        let filtered = filter.apply(selectedEntries)
-        return search.query.isEmpty ? filtered : filtered.filter { search.matches($0) }
+        let entries = selectedEntries
+        var effective = filter
+        effective.dates = timeWindow.dates(in: entries)
+        effective.query = searchQuery
+        return effective.apply(entries)
     }
 
     var visibleEntries: [PeekEntry] {
