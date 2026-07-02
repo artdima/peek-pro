@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConsoleListGrouping: String, CaseIterable, Identifiable {
+nonisolated enum ConsoleListGrouping: String, CaseIterable, Identifiable, Sendable {
     case status
     case host
     case source
@@ -20,7 +20,7 @@ enum ConsoleListGrouping: String, CaseIterable, Identifiable {
     }
 }
 
-struct ConsoleListSection: Identifiable {
+nonisolated struct ConsoleListSection: Identifiable, Sendable {
     let id: String
     let title: String?
     let entries: [PeekEntry]
@@ -28,43 +28,48 @@ struct ConsoleListSection: Identifiable {
 
 extension ConsoleListGrouping {
     /// Oldest first inside a section; status sections go by code, then failures, then pending — as Pulse orders them.
-    func sections(of entries: [PeekEntry]) -> [ConsoleListSection] {
-        let ordered = entries.sorted { $0.startedAt < $1.startedAt }
+    nonisolated func sections(of entries: [PeekEntry]) -> [ConsoleListSection] {
+        let ordered = PeekSort.oldestFirst.apply(entries)
         guard self != .none else {
             return [ConsoleListSection(id: "all", title: nil, entries: ordered)]
         }
-        var keys: [String] = []
-        var groups: [String: [PeekEntry]] = [:]
+        var groups: [Group: [PeekEntry]] = [:]
         for entry in ordered {
-            let groupKey = key(for: entry)
-            if groups[groupKey] == nil { keys.append(groupKey) }
-            groups[groupKey, default: []].append(entry)
+            groups[group(of: entry), default: []].append(entry)
         }
-        let sortedKeys = keys.sorted { lhs, rhs in
-            let left = rank(of: groups[lhs]?.first)
-            let right = rank(of: groups[rhs]?.first)
-            return left == right ? lhs < rhs : left < right
-        }
-        return sortedKeys.map { key in
-            ConsoleListSection(id: key, title: key, entries: groups[key] ?? [])
+        return groups.keys.sorted().map { group in
+            ConsoleListSection(id: group.id, title: group.title, entries: groups[group] ?? [])
         }
     }
 
-    private func key(for entry: PeekEntry) -> String {
+    private nonisolated func group(of entry: PeekEntry) -> Group {
         switch self {
-        case .status: entry.statusTitle
-        case .host: entry.request.host
-        case .source: entry.source
-        case .none: ""
+        case .status:
+            // The code first: Dio reports every 4xx/5xx as a badResponse failure, and those belong with their code.
+            if let code = entry.statusCode {
+                let title = [String(code), PeekHTTPStatus.reasonPhrase(for: code)].compactMap(\.self).joined(separator: " ")
+                return Group(rank: 0, code: code, title: title)
+            }
+            if let failure = entry.failure {
+                return Group(rank: 1, code: PeekFailureKind.allCases.firstIndex(of: failure.kind) ?? 0, title: failure.kind.title)
+            }
+            return Group(rank: 2, code: 0, title: PeekEntryState.pending.title)
+        case .host: return Group(rank: 0, code: 0, title: entry.request.host)
+        case .source: return Group(rank: 0, code: 0, title: entry.source)
+        case .none: return Group(rank: 0, code: 0, title: "")
         }
     }
 
-    private func rank(of entry: PeekEntry?) -> Int {
-        guard self == .status, let entry else { return 0 }
-        if let code = entry.statusCode, entry.failure == nil { return code }
-        if let failure = entry.failure {
-            return 1_000 + (PeekFailureKind.allCases.firstIndex(of: failure.kind) ?? 0)
+    /// Titles come from the code, not the server's own status message, so "200 Success" doesn't split the 200s.
+    private nonisolated struct Group: Hashable, Comparable {
+        let rank: Int
+        let code: Int
+        let title: String
+
+        var id: String { "\(rank)-\(code)-\(title)" }
+
+        static func < (lhs: Group, rhs: Group) -> Bool {
+            (lhs.rank, lhs.code, lhs.title) < (rhs.rank, rhs.code, rhs.title)
         }
-        return 2_000
     }
 }

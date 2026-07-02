@@ -6,43 +6,45 @@ struct ConsoleTableView: View {
     @Environment(\.openWindow) private var openWindow
     let entries: [PeekEntry]
 
-    @State private var sortOrder = [KeyPathComparator(\PeekEntry.startedAt)]
+    @SceneStorage("consoleTable.sort") private var sortStorage = ConsoleSort.default.storage
     @SceneStorage("consoleTable.columns") private var columns = TableColumnCustomization<PeekEntry>()
 
     var body: some View {
         @Bindable var model = model
-        let rows = entries.sorted(using: sortOrder)
+        let sort = ConsoleSort(storage: sortStorage) ?? .default
+        let rows = sort.apply(entries)
+        let newest = entries.max { $0.startedAt < $1.startedAt }?.id
 
         ScrollViewReader { proxy in
-            Table(of: PeekEntry.self, selection: $model.selectedEntryIDs, sortOrder: $sortOrder, columnCustomization: $columns) {
+            Table(of: PeekEntry.self, selection: $model.selectedEntryIDs, sortOrder: sortOrder, columnCustomization: $columns) {
                 Group {
-                    TableColumn("", value: \PeekEntry.sortStatus) { entry in
+                    TableColumn("", sortUsing: ConsoleSort(.status)) { entry in
                         StatusIcon(entry: entry)
                     }
                     .width(18)
                     .customizationID("status")
                     .disabledCustomizationBehavior(.visibility)
 
-                    TableColumn("Code", value: \PeekEntry.sortStatus) { entry in
+                    TableColumn("Code", sortUsing: ConsoleSort(.status)) { entry in
                         CodeCell(entry: entry)
                     }
                     .width(min: 36, ideal: 44, max: 64)
                     .customizationID("code")
 
-                    TableColumn("Method", value: \PeekEntry.sortMethod) { entry in
+                    TableColumn("Method", sortUsing: ConsoleSort(.method)) { entry in
                         ErrorTintedText(entry: entry, text: entry.request.method)
                     }
                     .width(min: 44, ideal: 60, max: 90)
                     .customizationID("method")
 
-                    TableColumn("URL", value: \PeekEntry.sortURL) { entry in
+                    TableColumn("URL", sortUsing: ConsoleSort(.url)) { entry in
                         URLCell(entry: entry)
                     }
                     .width(min: 180, ideal: 420)
                     .customizationID("url")
                     .disabledCustomizationBehavior(.visibility)
 
-                    TableColumn("Date", value: \PeekEntry.startedAt) { entry in
+                    TableColumn("Date", sortUsing: ConsoleSort(.startedAt)) { entry in
                         Text(PeekFormat.date(entry.startedAt))
                             .foregroundStyle(.secondary)
                     }
@@ -50,7 +52,7 @@ struct ConsoleTableView: View {
                     .customizationID("date")
                     .defaultVisibility(.hidden)
 
-                    TableColumn("Time", value: \PeekEntry.startedAt) { entry in
+                    TableColumn("Time", sortUsing: ConsoleSort(.startedAt)) { entry in
                         Text(PeekFormat.time(entry.startedAt))
                             .monospacedDigit()
                     }
@@ -58,35 +60,35 @@ struct ConsoleTableView: View {
                     .customizationID("time")
                 }
                 Group {
-                    TableColumn("Duration", value: \PeekEntry.sortDuration) { entry in
+                    TableColumn("Duration", sortUsing: ConsoleSort(.duration)) { entry in
                         DurationCell(entry: entry)
                     }
                     .width(min: 56, ideal: 72)
                     .alignment(.trailing)
                     .customizationID("duration")
 
-                    TableColumn("Request", value: \PeekEntry.sortRequestSize) { entry in
+                    TableColumn("Request", sortUsing: ConsoleSort(.requestSize)) { entry in
                         SizeCell(size: entry.requestSize)
                     }
                     .width(min: 52, ideal: 68)
                     .alignment(.trailing)
                     .customizationID("request")
 
-                    TableColumn("Response", value: \PeekEntry.sortResponseSize) { entry in
+                    TableColumn("Response", sortUsing: ConsoleSort(.responseSize)) { entry in
                         SizeCell(size: entry.responseSize)
                     }
                     .width(min: 56, ideal: 76)
                     .alignment(.trailing)
                     .customizationID("response")
 
-                    TableColumn("Source", value: \PeekEntry.sortSource) { entry in
+                    TableColumn("Source", sortUsing: ConsoleSort(.source)) { entry in
                         Text(entry.source)
                             .foregroundStyle(.secondary)
                     }
                     .width(min: 44, ideal: 72)
                     .customizationID("source")
 
-                    TableColumn("", value: \PeekEntry.sortPinned) { entry in
+                    TableColumn("", sortUsing: ConsoleSort(.pinned)) { entry in
                         if entry.isPinned {
                             Image(systemName: "pin.fill")
                                 .foregroundStyle(.orange)
@@ -103,14 +105,23 @@ struct ConsoleTableView: View {
             }
             .tableStyle(.inset(alternatesRowBackgrounds: true))
             .opensEntryWindows(model: model, openWindow: openWindow)
-            .onChange(of: rows.last?.id) { _, last in
-                guard model.isFollowing, let last else { return }
-                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+            .onChange(of: newest) { _, newest in
+                guard model.isFollowing, let newest else { return }
+                withAnimation { proxy.scrollTo(newest, anchor: sort == .default ? .bottom : nil) }
             }
             .onChange(of: model.scrollToLatestRequest) {
-                guard let last = rows.last?.id else { return }
-                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                guard let newest else { return }
+                withAnimation { proxy.scrollTo(newest, anchor: sort == .default ? .bottom : nil) }
             }
+        }
+    }
+
+    /// Only the first comparator counts: the table keeps earlier clicks behind it, and `PeekSort` is stable anyway.
+    private var sortOrder: Binding<[ConsoleSort]> {
+        Binding {
+            [ConsoleSort(storage: sortStorage) ?? .default]
+        } set: { order in
+            sortStorage = (order.first ?? .default).storage
         }
     }
 }
