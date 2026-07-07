@@ -215,12 +215,8 @@ struct EntryContextMenu: View {
                 Button("Copy as Markdown") { copy(MockExport.markdown(first)) }
             }
             Divider()
-            let allPinned = entries.allSatisfy(\.isPinned)
-            Button(allPinned ? "Unpin" : "Pin") {
-                guard let sessionID = model.selectedSessionID else { return }
-                for entry in entries where entry.isPinned == allPinned {
-                    model.store.togglePin(entry.id, in: sessionID)
-                }
+            Button(entries.allSatisfy(\.isPinned) ? "Unpin" : "Pin") {
+                model.togglePin(Set(entries.map(\.id)))
             }
             Divider()
             Button(entries.count == 1 ? "Open in New Window" : "Open \(min(entries.count, OpenEntryWindowsAction.limit)) in New Windows") {

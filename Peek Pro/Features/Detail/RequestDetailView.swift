@@ -126,11 +126,7 @@ private struct MultipleSelectionView: View {
                     NSPasteboard.general.setString(entries.map(\.request.uri.absoluteString).joined(separator: "\n"), forType: .string)
                 }
                 Button(entries.allSatisfy(\.isPinned) ? "Unpin All" : "Pin All") {
-                    guard let sessionID = model.selectedSessionID else { return }
-                    let allPinned = entries.allSatisfy(\.isPinned)
-                    for entry in entries where entry.isPinned == allPinned {
-                        model.store.togglePin(entry.id, in: sessionID)
-                    }
+                    model.togglePin(Set(entries.map(\.id)))
                 }
                 Button("Export as HAR…") {}
                     .disabled(true)

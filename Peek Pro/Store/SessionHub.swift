@@ -70,8 +70,9 @@ final class SessionHub {
         stores[id]?.clear()
     }
 
-    func togglePin(_ entryID: PeekId, in id: PeekSessionID) {
-        stores[id]?.togglePin(entryID)
+    /// Pins live in memory only: a file's pins go when it's closed and aren't written into the .peek.
+    func setPinned(_ entryIDs: Set<PeekId>, to isPinned: Bool, in id: PeekSessionID) {
+        stores[id]?.setPinned(entryIDs, to: isPinned)
     }
 
     func closeFile(_ id: PeekSessionID) {

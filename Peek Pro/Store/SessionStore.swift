@@ -26,9 +26,12 @@ nonisolated struct SessionStore: Sendable {
     }
 
     /// Replaces the entry with the same id in place, or appends it. Returns what was evicted to make room.
+    /// A replaced entry keeps the pin it has here: pins are the viewer's, and the source only says what the call did.
     @discardableResult
     mutating func upsert(_ entry: PeekEntry) -> PeekEntry? {
         if let position = positions[entry.id] {
+            var entry = entry
+            entry.isPinned = entries[position].isPinned
             entries[position] = entry
             return nil
         }
@@ -50,9 +53,18 @@ nonisolated struct SessionStore: Sendable {
         return true
     }
 
+    /// Returns how many entries changed; ids that aren't here are skipped.
     @discardableResult
-    mutating func togglePin(_ id: PeekId) -> Bool {
-        update(id) { $0.isPinned.toggle() }
+    mutating func setPinned(_ ids: some Sequence<PeekId>, to isPinned: Bool) -> Int {
+        var changed = 0
+        for id in ids {
+            update(id) { entry in
+                guard entry.isPinned != isPinned else { return }
+                entry.isPinned = isPinned
+                changed += 1
+            }
+        }
+        return changed
     }
 
     @discardableResult

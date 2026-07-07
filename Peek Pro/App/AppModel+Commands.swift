@@ -16,12 +16,14 @@ extension AppModel {
     }
 
     func togglePinForSelection() {
-        guard let sessionID = selectedSessionID else { return }
-        let entries = commandEntries
-        let allPinned = entries.allSatisfy(\.isPinned)
-        for entry in entries where entry.isPinned == allPinned {
-            store.togglePin(entry.id, in: sessionID)
-        }
+        togglePin(selectedEntryIDs)
+    }
+
+    /// Pins them all unless every one is already pinned — then unpins them all, as Finder does with tags.
+    func togglePin(_ ids: Set<PeekId>) {
+        guard let sessionID = selectedSessionID, !ids.isEmpty else { return }
+        let entries = selectedEntries.filter { ids.contains($0.id) }
+        store.setPinned(ids, to: !entries.allSatisfy(\.isPinned), in: sessionID)
     }
 
     var canPauseSelectedSession: Bool {

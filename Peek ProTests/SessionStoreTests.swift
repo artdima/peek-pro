@@ -65,14 +65,39 @@ struct SessionStoreTests {
         #expect(store.entry(PeekId("c"))?.state == .pending)
     }
 
-    @Test("pins, updates and clears")
+    @Test("pins and unpins, skipping unknown ids and entries already there")
+    func pins() {
+        var store = SessionStore(entries: [entry("a"), entry("b", pinned: true), entry("c")])
+        let pinned = store.setPinned([PeekId("a"), PeekId("b"), PeekId("missing")], to: true)
+        #expect(pinned == 1)
+        #expect(store.entries.map(\.isPinned) == [true, true, false])
+        let unpinned = store.setPinned([PeekId("a"), PeekId("c")], to: false)
+        #expect(unpinned == 1)
+        #expect(store.entries.map(\.isPinned) == [false, true, false])
+    }
+
+    @Test("keeps the viewer's pin when the source sends the entry again")
+    func pinSurvivesUpdates() {
+        var store = SessionStore(entries: [entry("a", pending: true), entry("b", pinned: true)])
+        store.setPinned([PeekId("a")], to: true)
+        store.setPinned([PeekId("b")], to: false)
+        store.upsert(entry("a"))
+        store.upsert(entry("b", pinned: true))
+        #expect(store.entry(PeekId("a"))?.state == .completed)
+        #expect(store.entry(PeekId("a"))?.isPinned == true)
+        #expect(store.entry(PeekId("b"))?.isPinned == false)
+        store.upsert(entry("new", pinned: true))
+        #expect(store.entry(PeekId("new"))?.isPinned == true)
+    }
+
+    @Test("updates and clears")
     func editing() {
         var store = SessionStore(entries: [entry("a")])
-        let pinned = store.togglePin(PeekId("a"))
-        #expect(pinned)
+        let updated = store.update(PeekId("a")) { $0.isPinned = true }
+        let updatedMissing = store.update(PeekId("missing")) { $0.isPinned = true }
+        #expect(updated)
+        #expect(!updatedMissing)
         #expect(store.entry(PeekId("a"))?.isPinned == true)
-        let pinnedMissing = store.togglePin(PeekId("missing"))
-        #expect(!pinnedMissing)
         store.clear()
         #expect(store.isEmpty)
         #expect(store.entry(PeekId("a")) == nil)
@@ -148,13 +173,25 @@ struct SessionHubTests {
         let loaded = try opened()
         hub.addFile(loaded.file, entries: loaded.entries)
         let id = loaded.file.id
-        hub.togglePin(PeekId("e1"), in: id)
+        hub.setPinned([PeekId("e1")], to: true, in: id)
         #expect(hub.entry(PeekId("e1"), in: id)?.isPinned == true)
         hub.togglePaused(id)
         #expect(hub.isPaused(id))
         hub.clear(id)
         #expect(hub.entries(in: id).isEmpty)
         #expect(hub.file(id) != nil)
+    }
+
+    @Test("forgets a file's pins once it is opened again")
+    func filePinsLastUntilClosed() throws {
+        let hub = SessionHub()
+        let loaded = try opened()
+        let id = loaded.file.id
+        hub.addFile(loaded.file, entries: loaded.entries)
+        hub.setPinned([PeekId("e1")], to: true, in: id)
+        hub.closeFile(id)
+        hub.addFile(loaded.file, entries: loaded.entries)
+        #expect(hub.entry(PeekId("e1"), in: id)?.isPinned == false)
     }
 
     @Test("says so when a body can't be fetched")
