@@ -183,7 +183,7 @@ private struct DurationCell: View {
         } else {
             Text(entry.duration.map { PeekFormat.duration($0) } ?? "—")
                 .monospacedDigit()
-                .foregroundStyle((entry.duration?.timeInterval ?? 0) >= ConsoleIssue.slowThreshold ? Color.orange : Color.primary)
+                .foregroundStyle(entry.isSlow ? Color.orange : Color.primary)
         }
     }
 }

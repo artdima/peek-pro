@@ -21,25 +21,28 @@ nonisolated struct SessionInsights: Sendable {
             }
         }
 
+        /// A 4xx/5xx counts by its code even when the adapter also calls it a failure — Dio reports them all that way.
         init?(_ entry: PeekEntry) {
-            switch entry.state {
-            case .pending: self = .pending
-            case .failed: self = .failed
-            case .completed:
-                switch entry.statusClass {
+            if let statusClass = entry.statusClass, entry.failure == nil || statusClass.isError {
+                switch statusClass {
                 case .success, .informational: self = .success
                 case .redirect: self = .redirect
                 case .clientError: self = .clientError
                 case .serverError: self = .serverError
-                case .unknown, nil: return nil
+                case .unknown: return nil
                 }
+            } else if entry.failure != nil {
+                self = .failed
+            } else {
+                self = .pending
             }
         }
     }
 
     nonisolated struct Bucket: Identifiable, Sendable {
         let title: String
-        let upperBound: TimeInterval
+        /// `nil` for the last, open-ended bucket.
+        let upperBound: Duration?
         let count: Int
 
         var id: String { title }
@@ -53,8 +56,9 @@ nonisolated struct SessionInsights: Sendable {
         var id: String { name }
     }
 
-    static let bucketBounds: [(title: String, upperBound: TimeInterval)] = [
-        ("< 100 ms", 0.1), ("< 300 ms", 0.3), ("< 1 s", 1), ("< 3 s", 3), ("< 10 s", 10), ("10 s +", .infinity),
+    static let bucketBounds: [(title: String, upperBound: Duration?)] = [
+        ("< 100 ms", .milliseconds(100)), ("< 300 ms", .milliseconds(300)), ("< 1 s", .seconds(1)),
+        ("< 3 s", .seconds(3)), ("< 10 s", .seconds(10)), ("10 s +", nil),
     ]
 
     let total: Int
@@ -76,7 +80,7 @@ nonisolated struct SessionInsights: Sendable {
         total = entries.count
         let done = entries.filter { $0.state != .pending }
         finished = done.count
-        errors = done.filter(\.isError).count
+        errors = done.count(where: \.isError)
 
         let durations = done.compactMap(\.duration).sorted()
         median = Self.percentile(0.5, of: durations)
@@ -95,16 +99,18 @@ nonisolated struct SessionInsights: Sendable {
             sliceCounts[slice].map { (slice: slice, count: $0) }
         }
 
-        var lower: TimeInterval = 0
+        var lower = Duration.zero
         var buckets: [Bucket] = []
         for bound in Self.bucketBounds {
-            let count = durations.filter { $0.timeInterval >= lower && $0.timeInterval < bound.upperBound }.count
+            let count = durations.count(where: { duration in
+                duration >= lower && (bound.upperBound.map { duration < $0 } ?? true)
+            })
             buckets.append(Bucket(title: bound.title, upperBound: bound.upperBound, count: count))
-            lower = bound.upperBound
+            lower = bound.upperBound ?? lower
         }
         self.buckets = buckets
 
-        slowest = Array(done.sorted { ($0.duration ?? .zero) > ($1.duration ?? .zero) }.prefix(5))
+        slowest = Array(PeekSort.slowestFirst.apply(done).prefix(5))
 
         var requestsByHost: [String: Int] = [:]
         var errorsByHost: [String: Int] = [:]

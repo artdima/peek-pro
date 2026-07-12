@@ -218,9 +218,9 @@ final class AppModel {
         return selectedEntries.first { $0.id == id }
     }
 
-    var issues: [ConsoleIssue] {
+    var issues: [SessionIssue] {
         let dropped = selectedSessionID.flatMap { store.session($0) }?.droppedCount ?? 0
-        return ConsoleIssue.issues(in: selectedEntries, droppedCount: dropped)
+        return SessionIssue.issues(in: selectedEntries, droppedCount: dropped)
     }
 
     enum RemoteBodyAvailability {

@@ -1,7 +1,7 @@
 import Foundation
 
 /// A problem in the session; repeats of the same problem on the same endpoint fold into one issue.
-nonisolated struct ConsoleIssue: Identifiable, Sendable {
+nonisolated struct SessionIssue: Identifiable, Hashable, Sendable {
     nonisolated enum Severity: Int, Comparable, Sendable {
         case error
         case warning
@@ -9,7 +9,7 @@ nonisolated struct ConsoleIssue: Identifiable, Sendable {
         static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
     }
 
-    static let slowThreshold: TimeInterval = 3
+    static let slowThreshold = Duration.seconds(3)
 
     let id: String
     let severity: Severity
@@ -22,23 +22,24 @@ nonisolated struct ConsoleIssue: Identifiable, Sendable {
     var count: Int { entryIDs.count }
     var latestEntryID: PeekId? { entryIDs.last }
 
-    static func issues(in entries: [PeekEntry], droppedCount: Int = 0) -> [ConsoleIssue] {
+    /// Counted over the whole session, whatever the filters show. Errors first, then the most recent.
+    static func issues(in entries: [PeekEntry], droppedCount: Int = 0) -> [SessionIssue] {
         var order: [String] = []
-        var byKey: [String: ConsoleIssue] = [:]
-        for entry in entries.sorted(by: { $0.startedAt < $1.startedAt }) {
-            guard let issue = makeIssue(for: entry) else { continue }
-            if var existing = byKey[issue.id] {
+        var byID: [String: SessionIssue] = [:]
+        for entry in PeekSort.oldestFirst.apply(entries) {
+            guard let issue = issue(for: entry) else { continue }
+            if var existing = byID[issue.id] {
                 existing.entryIDs.append(entry.id)
                 existing.lastSeen = entry.startedAt
-                byKey[issue.id] = existing
+                byID[issue.id] = existing
             } else {
                 order.append(issue.id)
-                byKey[issue.id] = issue
+                byID[issue.id] = issue
             }
         }
-        var result = order.compactMap { byKey[$0] }
+        var result = order.compactMap { byID[$0] }
         if droppedCount > 0 {
-            result.append(ConsoleIssue(
+            result.append(SessionIssue(
                 id: "dropped",
                 severity: .warning,
                 title: "The device dropped \(droppedCount) \(droppedCount == 1 ? "entry" : "entries")",
@@ -47,17 +48,19 @@ nonisolated struct ConsoleIssue: Identifiable, Sendable {
                 lastSeen: nil
             ))
         }
-        return result.sorted {
-            if $0.severity != $1.severity { return $0.severity < $1.severity }
-            return ($0.lastSeen ?? .distantFuture) > ($1.lastSeen ?? .distantFuture)
+        return result.stableSorted { lhs, rhs in
+            if lhs.severity != rhs.severity { return lhs.severity < rhs.severity ? .orderedAscending : .orderedDescending }
+            let left = lhs.lastSeen ?? .distantFuture
+            let right = rhs.lastSeen ?? .distantFuture
+            return left == right ? .orderedSame : left > right ? .orderedAscending : .orderedDescending
         }
     }
 
-    private static func makeIssue(for entry: PeekEntry) -> ConsoleIssue? {
+    private static func issue(for entry: PeekEntry) -> SessionIssue? {
         let request = entry.request
         let endpoint = "\(request.method) \(request.host)\(request.path)"
         let make = { (key: String, severity: Severity, title: String) in
-            ConsoleIssue(
+            SessionIssue(
                 id: "\(key) \(endpoint)",
                 severity: severity,
                 title: title,
@@ -66,19 +69,25 @@ nonisolated struct ConsoleIssue: Identifiable, Sendable {
                 lastSeen: entry.startedAt
             )
         }
+        if entry.failure?.kind == .cancelled { return nil }
+        // The code first: Dio reports every 4xx/5xx as a badResponse failure, and those fold with plain 4xx/5xx.
+        if let code = entry.statusCode, entry.statusClass?.isError == true {
+            let title = [String(code), PeekHTTPStatus.reasonPhrase(for: code)].compactMap(\.self).joined(separator: " ")
+            return make("status-\(code)", .error, title)
+        }
         if let failure = entry.failure {
-            if failure.kind == .cancelled { return nil }
-            if failure.kind == .badResponse, entry.response != nil {
-                return make("status-\(entry.statusCode ?? 0)", .error, entry.statusTitle)
-            }
             return make("failure-\(failure.kind.rawValue)", .error, failure.kind.title)
         }
-        if entry.statusClass?.isError == true {
-            return make("status-\(entry.statusCode ?? 0)", .error, entry.statusTitle)
-        }
-        if let duration = entry.duration?.timeInterval, duration >= slowThreshold {
+        if entry.isSlow {
             return make("slow", .warning, "Slow response")
         }
         return nil
+    }
+}
+
+extension PeekEntry {
+    nonisolated var isSlow: Bool {
+        guard let duration else { return false }
+        return duration >= SessionIssue.slowThreshold
     }
 }

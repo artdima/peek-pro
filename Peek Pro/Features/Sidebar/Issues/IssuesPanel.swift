@@ -47,7 +47,7 @@ struct IssuesPanel: View {
 }
 
 private struct IssueRow: View {
-    let issue: ConsoleIssue
+    let issue: SessionIssue
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
