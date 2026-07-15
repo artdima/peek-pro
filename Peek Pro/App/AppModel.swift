@@ -44,6 +44,8 @@ final class AppModel {
         didSet { openFiles.save() }
     }
     var fileOpenError: FileOpenError?
+    @ObservationIgnored private var selection = ConsoleSelection()
+    @ObservationIgnored private var derived = ConsoleDerived()
     var listGrouping = ConsoleListGrouping(rawValue: UserDefaults.standard.string(forKey: ConsoleListGrouping.storageKey) ?? "") ?? .status {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
@@ -181,18 +183,66 @@ final class AppModel {
         timeWindow = .any
     }
 
-    /// Filters and search; the quick modes count within this.
+    /// Filters and search; the quick modes count within this. Updated incrementally as the session changes.
     var filteredEntries: [PeekEntry] {
-        let entries = selectedEntries
+        let sessionStore = selectedSessionID.flatMap { store.store($0) }
         var effective = filter
-        effective.dates = timeWindow.dates(in: entries)
+        effective.dates = timeWindow.dates(latest: sessionStore?.latestStart)
         effective.query = searchQuery
-        return effective.apply(entries)
+        selection.update(from: sessionStore, filter: effective)
+        return selection.entries
     }
 
     var visibleEntries: [PeekEntry] {
-        let entries = filteredEntries
-        return quickMode == .all ? entries : entries.filter { quickMode.matches($0) }
+        let filtered = filteredEntries
+        guard quickMode != .all else { return filtered }
+        let key = ConsoleDerived.Key(generation: selection.generation, mode: quickMode)
+        if let cached = derived.visible, cached.key == key { return cached.entries }
+        let entries = filtered.filter(quickMode.matches)
+        derived.visible = (key, entries)
+        return entries
+    }
+
+    func count(of mode: ConsoleQuickMode) -> Int {
+        let filtered = filteredEntries
+        if let cached = derived.counts, cached.generation == selection.generation { return cached.counts[mode] ?? 0 }
+        var counts: [ConsoleQuickMode: Int] = [.all: filtered.count]
+        for entry in filtered {
+            for mode in ConsoleQuickMode.allCases where mode != .all && mode.matches(entry) {
+                counts[mode, default: 0] += 1
+            }
+        }
+        derived.counts = (selection.generation, counts)
+        return counts[mode] ?? 0
+    }
+
+    /// The table's rows, and the newest request wherever the sort put it — for Follow.
+    func tableRows(sortedBy sort: ConsoleSort) -> (rows: [PeekEntry], newest: PeekId?) {
+        let visible = visibleEntries
+        let key = ConsoleDerived.Key(generation: selection.generation, mode: quickMode)
+        if let cached = derived.rows, cached.key == key, cached.sort == sort { return (cached.rows, cached.newest) }
+        let rows = sort.apply(visible)
+        let newest = sort == .default ? rows.last?.id : visible.max { $0.startedAt < $1.startedAt }?.id
+        derived.rows = (key, sort, rows, newest)
+        return (rows, newest)
+    }
+
+    var newestVisibleID: PeekId? {
+        let visible = visibleEntries
+        let key = ConsoleDerived.Key(generation: selection.generation, mode: quickMode)
+        if let cached = derived.newest, cached.key == key { return cached.id }
+        let id = visible.max { $0.startedAt < $1.startedAt }?.id
+        derived.newest = (key, id)
+        return id
+    }
+
+    var listSections: [ConsoleListSection] {
+        let visible = visibleEntries
+        let key = ConsoleDerived.Key(generation: selection.generation, mode: quickMode)
+        if let cached = derived.sections, cached.key == key, cached.grouping == listGrouping { return cached.sections }
+        let sections = listGrouping.sections(of: visible)
+        derived.sections = (key, listGrouping, sections)
+        return sections
     }
 
     var unseenCount: Int {
@@ -214,8 +264,8 @@ final class AppModel {
     }
 
     var selectedEntry: PeekEntry? {
-        guard selectedEntryIDs.count == 1, let id = selectedEntryIDs.first else { return nil }
-        return selectedEntries.first { $0.id == id }
+        guard selectedEntryIDs.count == 1, let id = selectedEntryIDs.first, let sessionID = selectedSessionID else { return nil }
+        return store.entry(id, in: sessionID)
     }
 
     var issues: [SessionIssue] {
@@ -266,4 +316,18 @@ struct FileOpenError: Identifiable {
     let id = UUID()
     let name: String
     let message: String
+}
+
+/// What the console derives from the selection; each part is rebuilt only when its inputs change.
+private struct ConsoleDerived {
+    struct Key: Equatable {
+        let generation: Int
+        let mode: ConsoleQuickMode
+    }
+
+    var visible: (key: Key, entries: [PeekEntry])?
+    var counts: (generation: Int, counts: [ConsoleQuickMode: Int])?
+    var rows: (key: Key, sort: ConsoleSort, rows: [PeekEntry], newest: PeekId?)?
+    var sections: (key: Key, grouping: ConsoleListGrouping, sections: [ConsoleListSection])?
+    var newest: (key: Key, id: PeekId?)?
 }

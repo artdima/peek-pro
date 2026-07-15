@@ -76,6 +76,8 @@ final class MockFeed {
             if scenario == .paused { hub.setPaused([FixtureSessions.iPhoneSession.id]) }
         case .large:
             hub.addSession(FixtureSessions.iPhoneSession, entries: Fixtures.large)
+        case .huge:
+            hub.addSession(FixtureSessions.iPhoneSession, entries: Fixtures.bulk(SessionStore.defaultLimit))
         case .disconnected:
             var iPhone = FixtureSessions.iPhoneSession
             iPhone.connection = .disconnected
@@ -90,7 +92,7 @@ final class MockFeed {
             hub.setRejected(FixtureSessions.rejected)
         }
 
-        if isLive && scenario == .live { startTicking() }
+        if isLive && (scenario == .live || scenario == .huge) { startTicking() }
     }
 
     private func startTicking() {
@@ -107,8 +109,11 @@ final class MockFeed {
     private func tick() {
         let target = FixtureSessions.iPhoneSession.id
         guard hub.session(target) != nil, !hub.isPaused(target) else { return }
-        let finished = hub.entries(in: target).compactMap { entry in
-            pendingTemplates.removeValue(forKey: entry.id).map { entry.finished(like: $0) }
+        var finished: [PeekEntry] = []
+        for (id, template) in pendingTemplates {
+            guard let entry = hub.entry(id, in: target) else { continue }
+            finished.append(entry.finished(like: template))
+            pendingTemplates[id] = nil
         }
         let templates = Fixtures.liveTemplates
         let template = templates[tickCount % templates.count]

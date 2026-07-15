@@ -10,7 +10,7 @@ struct RequestDetailView: View {
             if let entry = model.selectedEntry {
                 EntryDetailView(entry: entry)
             } else if model.selectedEntryIDs.count > 1 {
-                MultipleSelectionView(entries: model.selectedEntries.filter { model.selectedEntryIDs.contains($0.id) })
+                MultipleSelectionView(entries: model.commandEntries)
             } else {
                 ContentUnavailableView("No Request Selected", systemImage: "network",
                                        description: Text("Select a request to see its details."))

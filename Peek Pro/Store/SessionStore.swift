@@ -8,14 +8,25 @@ import Foundation
 nonisolated struct SessionStore: Sendable {
     static let defaultLimit = 100_000
 
+    static let journalLimit = 4_096
+
     let limit: Int
+    /// Tells a replaced store from the one before it, whose revisions it would otherwise repeat.
+    let instance = UUID()
     private(set) var entries: [PeekEntry] = []
     private var positions: [PeekId: Int] = [:]
+    /// Bumped on every change, so a view of the entries can tell whether it is stale.
+    private(set) var revision = 0
+    private(set) var latestStart: Date?
+    /// Positions written since `journalStart`; positions hold still while entries are only appended or replaced.
+    private var journal: [(revision: Int, position: Int)] = []
+    private var journalStart = 0
 
     init(limit: Int = defaultLimit, entries: [PeekEntry] = []) {
         precondition(limit > 0, "SessionStore needs room for at least one entry")
         self.limit = limit
         upsert(contentsOf: entries)
+        forgetJournal()
     }
 
     var count: Int { entries.count }
@@ -23,6 +34,18 @@ nonisolated struct SessionStore: Sendable {
 
     func entry(_ id: PeekId) -> PeekEntry? {
         positions[id].map { entries[$0] }
+    }
+
+    func position(of id: PeekId) -> Int? {
+        positions[id]
+    }
+
+    /// Positions appended or replaced after `revision`, ascending; `nil` when something was removed
+    /// since then, or the journal no longer reaches back that far — start over from `entries`.
+    func changedPositions(since revision: Int) -> [Int]? {
+        guard revision >= journalStart, revision <= self.revision else { return nil }
+        let first = journal.partitioningIndex { $0.revision <= revision }
+        return Array(Set(journal[first...].map(\.position))).sorted()
     }
 
     /// Replaces the entry with the same id in place, or appends it. Returns what was evicted to make room.
@@ -33,11 +56,13 @@ nonisolated struct SessionStore: Sendable {
             var entry = entry
             entry.isPinned = entries[position].isPinned
             entries[position] = entry
+            noteChange(at: position, started: entry.startedAt)
             return nil
         }
         let evicted = entries.count >= limit ? evict() : nil
         positions[entry.id] = entries.count
         entries.append(entry)
+        noteChange(at: entries.count - 1, started: entry.startedAt)
         return evicted
     }
 
@@ -50,6 +75,7 @@ nonisolated struct SessionStore: Sendable {
     mutating func update(_ id: PeekId, _ change: (inout PeekEntry) -> Void) -> Bool {
         guard let position = positions[id] else { return false }
         change(&entries[position])
+        noteChange(at: position, started: entries[position].startedAt)
         return true
     }
 
@@ -76,6 +102,8 @@ nonisolated struct SessionStore: Sendable {
     mutating func clear() {
         entries = []
         positions = [:]
+        latestStart = nil
+        forgetJournal()
     }
 
     private mutating func evict() -> PeekEntry {
@@ -91,6 +119,26 @@ nonisolated struct SessionStore: Sendable {
         for index in position..<entries.count {
             positions[entries[index].id] = index
         }
+        if removed.startedAt == latestStart { latestStart = entries.lazy.map(\.startedAt).max() }
+        forgetJournal()
         return removed
+    }
+
+    private mutating func noteChange(at position: Int, started: Date) {
+        revision += 1
+        if latestStart.map({ started > $0 }) ?? true { latestStart = started }
+        journal.append((revision, position))
+        if journal.count > Self.journalLimit {
+            let dropped = journal.count - Self.journalLimit / 2
+            journalStart = journal[dropped - 1].revision
+            journal.removeFirst(dropped)
+        }
+    }
+
+    /// Positions moved, so nothing before now can be answered from the journal.
+    private mutating func forgetJournal() {
+        revision += 1
+        journal = []
+        journalStart = revision
     }
 }

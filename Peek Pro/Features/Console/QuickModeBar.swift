@@ -4,10 +4,9 @@ struct QuickModeBar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let entries = model.filteredEntries
         HStack(spacing: 2) {
             ForEach(ConsoleQuickMode.allCases) { mode in
-                PillButton(title: mode.title, count: mode.count(in: entries), isSelected: model.quickMode == mode) {
+                PillButton(title: mode.title, count: model.count(of: mode), isSelected: model.quickMode == mode) {
                     model.quickMode = mode
                 }
             }

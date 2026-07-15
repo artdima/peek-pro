@@ -44,6 +44,17 @@ final class SessionHub {
         stores[id]?.entry(entryID)
     }
 
+    /// Copy-on-write, so reading the whole store costs nothing until it changes.
+    func store(_ id: PeekSessionID) -> SessionStore? {
+        stores[id]
+    }
+
+    /// In the order they arrived; ids that aren't in the session are skipped.
+    func entries(_ entryIDs: Set<PeekId>, in id: PeekSessionID) -> [PeekEntry] {
+        guard let store = stores[id] else { return [] }
+        return entryIDs.compactMap(store.position(of:)).sorted().map { store.entries[$0] }
+    }
+
     func session(_ id: PeekSessionID) -> PeekLiveSession? {
         sessions.first { $0.id == id }
     }

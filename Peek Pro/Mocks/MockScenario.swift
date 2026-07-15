@@ -9,6 +9,8 @@ enum MockScenario: String, CaseIterable, Identifiable {
     case disconnected
     case file
     case rejected
+    /// Last, so the shortcuts of the others stay put.
+    case huge
 
     var id: Self { self }
 
@@ -22,6 +24,7 @@ enum MockScenario: String, CaseIterable, Identifiable {
         case .disconnected: "Device Disconnected"
         case .file: "Session Files"
         case .rejected: "Rejected Connections"
+        case .huge: "100 000 Requests, Live"
         }
     }
 }

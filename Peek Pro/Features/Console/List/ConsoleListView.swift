@@ -4,11 +4,11 @@ import SwiftUI
 struct ConsoleListView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
-    let entries: [PeekEntry]
 
     var body: some View {
         @Bindable var model = model
-        let sections = model.listGrouping.sections(of: entries)
+        let sections = model.listSections
+        let newest = model.newestVisibleID
 
         ScrollViewReader { proxy in
             List(selection: $model.selectedEntryIDs) {
@@ -30,13 +30,13 @@ struct ConsoleListView: View {
             }
             .listStyle(.inset)
             .opensEntryWindows(model: model, openWindow: openWindow)
-            .onChange(of: entries.last?.id) { _, last in
-                guard model.isFollowing, let last else { return }
-                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+            .onChange(of: newest) { _, newest in
+                guard model.isFollowing, let newest else { return }
+                withAnimation { proxy.scrollTo(newest, anchor: .bottom) }
             }
             .onChange(of: model.scrollToLatestRequest) {
-                guard let last = entries.last?.id else { return }
-                withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                guard let newest else { return }
+                withAnimation { proxy.scrollTo(newest, anchor: .bottom) }
             }
         }
     }
@@ -120,7 +120,7 @@ struct ListGroupingMenu: View {
 
 #Preview("By Status") {
     let model = AppModel.preview(.live)
-    ConsoleListView(entries: model.filteredEntries)
+    ConsoleListView()
         .environment(model)
         .frame(width: 900, height: 700)
 }
@@ -128,7 +128,7 @@ struct ListGroupingMenu: View {
 #Preview("By Host — Dark") {
     let model = AppModel.preview(.live)
     model.listGrouping = .host
-    return ConsoleListView(entries: model.filteredEntries)
+    return ConsoleListView()
         .environment(model)
         .frame(width: 900, height: 700)
         .preferredColorScheme(.dark)

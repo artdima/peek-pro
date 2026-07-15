@@ -3,7 +3,7 @@ import AppKit
 /// What the menus act on: the requests selected in the main window and the session they belong to.
 extension AppModel {
     var commandEntries: [PeekEntry] {
-        selectedEntries.filter { selectedEntryIDs.contains($0.id) }
+        selectedSessionID.map { store.entries(selectedEntryIDs, in: $0) } ?? []
     }
 
     func copyURLs() {
@@ -22,7 +22,7 @@ extension AppModel {
     /// Pins them all unless every one is already pinned — then unpins them all, as Finder does with tags.
     func togglePin(_ ids: Set<PeekId>) {
         guard let sessionID = selectedSessionID, !ids.isEmpty else { return }
-        let entries = selectedEntries.filter { ids.contains($0.id) }
+        let entries = store.entries(ids, in: sessionID)
         store.setPinned(ids, to: !entries.allSatisfy(\.isPinned), in: sessionID)
     }
 

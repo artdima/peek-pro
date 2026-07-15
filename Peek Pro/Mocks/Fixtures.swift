@@ -408,13 +408,15 @@ enum Fixtures {
     }
 
     /// Ten thousand calls for scrolling and filtering at scale; bodies are shared, not copied.
-    static let large: [PeekEntry] = {
+    static let large = bulk(10_000)
+
+    static func bulk(_ count: Int) -> [PeekEntry] {
         let finished = Fixtures.session.filter { $0.state != .pending }
-        return (0..<10_000).map { index in
+        return (0..<count).map { index in
             let template = finished[index % finished.count]
             return template.copy(id: "l\(index)", startedAt: Fixtures.start.addingTimeInterval(Double(index) * 0.35))
         }
-    }()
+    }
 }
 
 extension PeekEntry {

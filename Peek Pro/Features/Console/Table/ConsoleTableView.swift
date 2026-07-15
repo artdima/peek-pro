@@ -4,7 +4,6 @@ import SwiftUI
 struct ConsoleTableView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
-    let entries: [PeekEntry]
 
     @SceneStorage("consoleTable.sort") private var sortStorage = ConsoleSort.default.storage
     @SceneStorage("consoleTable.columns") private var columns = TableColumnCustomization<PeekEntry>()
@@ -12,8 +11,9 @@ struct ConsoleTableView: View {
     var body: some View {
         @Bindable var model = model
         let sort = ConsoleSort(storage: sortStorage) ?? .default
-        let rows = sort.apply(entries)
-        let newest = entries.max { $0.startedAt < $1.startedAt }?.id
+        let table = model.tableRows(sortedBy: sort)
+        let rows = table.rows
+        let newest = table.newest
 
         ScrollViewReader { proxy in
             Table(of: PeekEntry.self, selection: $model.selectedEntryIDs, sortOrder: sortOrder, columnCustomization: $columns) {
@@ -204,7 +204,7 @@ struct EntryContextMenu: View {
     let ids: Set<PeekId>
 
     var body: some View {
-        let entries = model.selectedEntries.filter { ids.contains($0.id) }
+        let entries = model.selectedSessionID.map { model.store.entries(ids, in: $0) } ?? []
         if let first = entries.first {
             Button(entries.count == 1 ? "Copy URL" : "Copy \(entries.count) URLs") {
                 copy(entries.map(\.request.uri.absoluteString).joined(separator: "\n"))
@@ -235,14 +235,14 @@ struct EntryContextMenu: View {
 
 #Preview("Live") {
     let model = AppModel.preview(.live)
-    ConsoleTableView(entries: model.filteredEntries)
+    ConsoleTableView()
         .environment(model)
         .frame(width: 1100, height: 600)
 }
 
 #Preview("Large — Dark") {
     let model = AppModel.preview(.large)
-    ConsoleTableView(entries: model.filteredEntries)
+    ConsoleTableView()
         .environment(model)
         .frame(width: 1100, height: 600)
         .preferredColorScheme(.dark)

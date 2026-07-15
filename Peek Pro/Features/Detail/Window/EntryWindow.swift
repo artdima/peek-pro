@@ -26,7 +26,7 @@ extension AppModel {
 
     func entry(for windowID: EntryWindowID) -> PeekEntry? {
         guard let session = session(for: windowID) else { return nil }
-        return store.entries(in: session).first { $0.id.value == windowID.entry }
+        return store.entry(PeekId(windowID.entry), in: session)
     }
 }
 

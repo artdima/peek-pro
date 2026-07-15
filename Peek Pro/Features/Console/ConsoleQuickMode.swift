@@ -26,8 +26,4 @@ nonisolated enum ConsoleQuickMode: String, CaseIterable, Identifiable, Sendable 
         case .pinned: entry.isPinned
         }
     }
-
-    func count(in entries: [PeekEntry]) -> Int {
-        self == .all ? entries.count : entries.reduce(0) { $0 + (matches($1) ? 1 : 0) }
-    }
 }

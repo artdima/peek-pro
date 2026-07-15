@@ -56,9 +56,9 @@ struct ConsoleContentView: View {
         } else {
             switch model.viewMode {
             case .table:
-                ConsoleTableView(entries: entries)
+                ConsoleTableView()
             case .list:
-                ConsoleListView(entries: entries)
+                ConsoleListView()
             }
         }
     }

@@ -18,8 +18,8 @@ nonisolated enum ConsoleTimeWindow: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    func dates(in entries: [PeekEntry]) -> PeekDateRange {
-        guard self != .any, let latest = entries.map(\.startedAt).max() else { return .any }
+    func dates(latest: Date?) -> PeekDateRange {
+        guard self != .any, let latest else { return .any }
         return PeekDateRange(from: latest.addingTimeInterval(-Double(rawValue) * 60))
     }
 }
