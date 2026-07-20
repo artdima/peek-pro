@@ -9,6 +9,7 @@ enum CodeTextStyle {
         case .string: NSColor(named: "CodeString") ?? .systemRed
         case .number: NSColor(named: "CodeNumber") ?? .systemBlue
         case .keyword: NSColor(named: "CodeKeyword") ?? .systemPink
+        case .comment: .secondaryLabelColor
         }
     }
 }

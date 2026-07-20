@@ -12,7 +12,7 @@ extension AppModel {
 
     func copyCurl() {
         guard let entry = selectedEntry else { return }
-        copy(MockExport.curl(entry))
+        copy(PeekExporters.curl.export(entry))
     }
 
     func togglePinForSelection() {

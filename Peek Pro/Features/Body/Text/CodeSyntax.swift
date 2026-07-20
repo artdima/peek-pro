@@ -15,7 +15,7 @@ nonisolated enum CodeSyntax: Equatable, Sendable {
     }
 }
 
-/// Colors the `curl` word, `-X` / `--data` style flags and single-quoted arguments.
+/// Colors the `curl` word, `-X` / `--data` style flags, single-quoted arguments and `# notes`.
 nonisolated enum CurlHighlighter {
     private static let curlWord = Array("curl".utf16)
 
@@ -33,6 +33,10 @@ nonisolated enum CurlHighlighter {
                 index = min(index + 1, units.count)
                 result.append(CodeToken(kind: .string, range: NSRange(location: start, length: index - start)))
                 atWordStart = false
+            } else if atWordStart, unit == 0x23 {
+                let start = index
+                while index < units.count, units[index] != 0x0A { index += 1 }
+                result.append(CodeToken(kind: .comment, range: NSRange(location: start, length: index - start)))
             } else if atWordStart, unit == 0x2D {
                 let start = index
                 while index < units.count, units[index] != 0x20, units[index] != 0x0A { index += 1 }

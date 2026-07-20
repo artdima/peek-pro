@@ -5,6 +5,7 @@ nonisolated struct CodeToken: Sendable {
         case string
         case number
         case keyword
+        case comment
     }
 
     let kind: Kind

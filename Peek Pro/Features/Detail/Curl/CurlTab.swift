@@ -7,7 +7,7 @@ struct CurlTab: View {
     @AppStorage(SettingsKey.bodyFontSize) private var fontSize = 12.0
 
     var body: some View {
-        let command = MockExport.curl(entry, multiline: isMultiline)
+        let command = PeekCurlExporter(multiline: isMultiline).export(entry)
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Text("Paste into a terminal to repeat the request.")

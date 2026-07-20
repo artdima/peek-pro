@@ -210,7 +210,7 @@ struct EntryContextMenu: View {
                 copy(entries.map(\.request.uri.absoluteString).joined(separator: "\n"))
             }
             if entries.count == 1 {
-                Button("Copy as cURL") { copy(MockExport.curl(first)) }
+                Button("Copy as cURL") { copy(PeekExporters.curl.export(first)) }
                 Button("Copy as Text") { copy(MockExport.text(first)) }
                 Button("Copy as Markdown") { copy(MockExport.markdown(first)) }
             }
