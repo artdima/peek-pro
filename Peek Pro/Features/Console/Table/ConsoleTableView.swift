@@ -211,8 +211,8 @@ struct EntryContextMenu: View {
             }
             if entries.count == 1 {
                 Button("Copy as cURL") { copy(PeekExporters.curl.export(first)) }
-                Button("Copy as Text") { copy(MockExport.text(first)) }
-                Button("Copy as Markdown") { copy(MockExport.markdown(first)) }
+                Button("Copy as Text") { copy(PeekExporters.text.export(first)) }
+                Button("Copy as Markdown") { copy(PeekExporters.markdown.export(first)) }
             }
             Divider()
             Button(entries.allSatisfy(\.isPinned) ? "Unpin" : "Pin") {

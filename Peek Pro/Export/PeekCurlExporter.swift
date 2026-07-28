@@ -87,6 +87,8 @@ nonisolated struct PeekCurlExporter: Sendable {
 /// Mirrors `PeekExporters`: every way Peek Pro hands an entry to something else.
 nonisolated enum PeekExporters {
     static let curl = PeekCurlExporter()
+    static let text = PeekTextExporter()
+    static let markdown = PeekMarkdownExporter()
 
     static func url(_ entry: PeekEntry) -> String {
         entry.request.uri.absoluteString
