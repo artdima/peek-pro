@@ -30,6 +30,24 @@ nonisolated struct PeekRequest: Hashable, Sendable {
         URLComponents(url: uri, resolvingAgainstBaseURL: false)?.queryItems ?? []
     }
 
+    /// Like Dart's `Uri.queryParametersAll`: grouped by name in order of first appearance, `+` read as a space.
+    var queryParameters: [(name: String, values: [String])] {
+        guard let query = uri.query(percentEncoded: true), !query.isEmpty else { return [] }
+        var order: [String] = []
+        var values: [String: [String]] = [:]
+        for pair in query.split(separator: "&", omittingEmptySubsequences: true) {
+            let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            let decode = { (raw: Substring) in
+                let spaced = raw.replacingOccurrences(of: "+", with: " ")
+                return spaced.removingPercentEncoding ?? spaced
+            }
+            let name = decode(parts[0])
+            if values[name] == nil { order.append(name) }
+            values[name, default: []].append(parts.count > 1 ? decode(parts[1]) : "")
+        }
+        return order.map { (name: $0, values: values[$0] ?? []) }
+    }
+
     var contentLength: Int? { headers.contentLength ?? body.size }
     var mediaType: PeekMediaType? { body.contentType ?? PeekMediaType(parsing: headers.contentType) }
 }

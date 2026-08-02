@@ -128,8 +128,9 @@ private struct MultipleSelectionView: View {
                 Button(entries.allSatisfy(\.isPinned) ? "Unpin All" : "Pin All") {
                     model.togglePin(Set(entries.map(\.id)))
                 }
-                Button("Export as HAR…") {}
-                    .disabled(true)
+                Button("Export as HAR…") {
+                    model.exportHAR(entries)
+                }
             }
         }
     }

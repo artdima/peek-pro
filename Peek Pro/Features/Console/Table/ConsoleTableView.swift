@@ -222,8 +222,9 @@ struct EntryContextMenu: View {
             Button(entries.count == 1 ? "Open in New Window" : "Open \(min(entries.count, OpenEntryWindowsAction.limit)) in New Windows") {
                 OpenEntryWindowsAction(model: model, openWindow: openWindow)(entries.map(\.id))
             }
-            Button(entries.count == 1 ? "Export as HAR…" : "Export \(entries.count) as HAR…") {}
-                .disabled(true)
+            Button(entries.count == 1 ? "Export as HAR…" : "Export \(entries.count) as HAR…") {
+                model.exportHAR(entries)
+            }
         }
     }
 

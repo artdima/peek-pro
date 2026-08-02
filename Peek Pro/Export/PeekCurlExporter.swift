@@ -89,6 +89,7 @@ nonisolated enum PeekExporters {
     static let curl = PeekCurlExporter()
     static let text = PeekTextExporter()
     static let markdown = PeekMarkdownExporter()
+    static let har = PeekHarExporter()
 
     static func url(_ entry: PeekEntry) -> String {
         entry.request.uri.absoluteString

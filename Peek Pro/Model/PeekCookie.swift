@@ -43,6 +43,26 @@ nonisolated struct PeekCookie: Hashable, Sendable {
     var isSecure: Bool { attributes.contains { $0.name == "secure" } }
     var isHttpOnly: Bool { attributes.contains { $0.name == "httponly" } }
 
+    /// `Expires` read as an IMF-fixdate (`Wed, 21 Oct 2015 07:28:00 GMT`), as Peek reads it; other forms give `nil`.
+    var expiresAt: Date? {
+        guard let raw = expires?.trimmingCharacters(in: .whitespaces) else { return nil }
+        let parts = raw.split(whereSeparator: \.isWhitespace)
+        guard parts.count == 6, parts[0].count == 4, parts[0].last == ",", parts[0].dropLast().allSatisfy(\.isLetter),
+              parts[5] == "GMT",
+              (1...2).contains(parts[1].count), let day = Int(parts[1]),
+              let monthIndex = Self.months.firstIndex(of: parts[2].lowercased()),
+              parts[3].count == 4, let year = Int(parts[3])
+        else { return nil }
+        let clock = parts[4].split(separator: ":", omittingEmptySubsequences: false)
+        guard clock.count == 3, (1...2).contains(clock[0].count), clock[1].count == 2, clock[2].count == 2,
+              let hour = Int(clock[0]), let minute = Int(clock[1]), let second = Int(clock[2])
+        else { return nil }
+        let components = DateComponents(year: year, month: monthIndex + 1, day: day, hour: hour, minute: minute, second: second)
+        return Calendar.utc.date(from: components)
+    }
+
+    private static let months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+
     private static func split(_ part: Substring) -> (name: String, value: String?)? {
         let trimmed = part.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }

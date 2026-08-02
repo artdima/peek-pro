@@ -51,7 +51,7 @@ struct ConsoleToolbar: ToolbarContent {
 
             DetailPlacementMenu(placement: $detailPlacement)
 
-            ExportMenu(hasEntries: !model.visibleEntries.isEmpty)
+            ExportMenu(model: model)
         }
 
         ToolbarItem(placement: .primaryAction) {
@@ -113,21 +113,23 @@ private struct SessionPicker: View {
     }
 }
 
+/// Everything the list shows now — filters, search and quick mode applied.
 private struct ExportMenu: View {
-    let hasEntries: Bool
+    let model: AppModel
 
     var body: some View {
+        let entries = model.visibleEntries
         Menu {
-            Button("Export as HAR…") {}
+            Button("Export as HAR…") { model.exportHAR(entries) }
             Button("Save as Peek Session…") {}
-            Button("Copy as Text") {}
+                .disabled(true)
+            Button("Copy as Text") { model.copyText(entries) }
         } label: {
             Label("Export", systemImage: "square.and.arrow.up")
         }
         .menuIndicator(.hidden)
-        // Exporters arrive in Phase 4; the menu is here so the toolbar can be judged as a whole.
-        .disabled(true)
-        .help(hasEntries ? "Export" : "Nothing to export")
+        .disabled(entries.isEmpty)
+        .help(entries.isEmpty ? "Nothing to export" : "Export the \(entries.count) requests in the list")
     }
 }
 

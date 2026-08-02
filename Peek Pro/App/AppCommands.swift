@@ -36,12 +36,12 @@ struct AppCommands: Commands {
             }
             CommandGroup(after: .saveItem) {
                 Menu("Export") {
-                    Button("HAR…") {}
+                    Button("HAR…") { model.exportHAR(model.visibleEntries) }
                     Button("Peek Session…") {}
-                    Button("Text…") {}
+                        .disabled(true)
+                    Button("Text…") { model.exportText(model.visibleEntries) }
                 }
-                // Exporters arrive in Phase 4.
-                .disabled(true)
+                .disabled(model.visibleEntries.isEmpty)
                 if let id = model.selectedSessionID, model.store.file(id) != nil {
                     Button("Close File") { model.closeFile(id) }
                 }
