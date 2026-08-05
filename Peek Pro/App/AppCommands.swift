@@ -37,8 +37,8 @@ struct AppCommands: Commands {
             CommandGroup(after: .saveItem) {
                 Menu("Export") {
                     Button("HAR…") { model.exportHAR(model.visibleEntries) }
-                    Button("Peek Session…") {}
-                        .disabled(true)
+                    Button("Peek Session…") { model.saveSession() }
+                        .disabled(!model.canSaveSession)
                     Button("Text…") { model.exportText(model.visibleEntries) }
                 }
                 .disabled(model.visibleEntries.isEmpty)

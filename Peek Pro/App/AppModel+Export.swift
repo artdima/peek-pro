@@ -14,6 +14,28 @@ extension AppModel {
         save(text(of: entries), as: .plainText, name: "\(exportName).txt")
     }
 
+    var canSaveSession: Bool {
+        guard let id = selectedSessionID else { return false }
+        return store.info(for: id) != nil && !selectedEntries.isEmpty
+    }
+
+    /// The whole session, whatever the list shows — a saved session should read like the one it came from.
+    func saveSession() {
+        guard let id = selectedSessionID, let info = store.info(for: id),
+              let url = chooseDestination(for: .peekSession, name: "\(exportName).peek")
+        else { return }
+        let entries = store.entries(in: id)
+        Task {
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    try PeekFileWriter.write(info: info, entries: entries, to: url)
+                }.value
+            } catch {
+                NSAlert(error: error).runModal()
+            }
+        }
+    }
+
     func copyText(_ entries: [PeekEntry]) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text(of: entries), forType: .string)
@@ -35,12 +57,16 @@ extension AppModel {
         return "\(title) \(stamp)"
     }
 
-    private func save(_ text: String, as type: UTType, name: String) {
+    private func chooseDestination(for type: UTType, name: String) -> URL? {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [type]
         panel.nameFieldStringValue = name
         panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func save(_ text: String, as type: UTType, name: String) {
+        guard let url = chooseDestination(for: type, name: name) else { return }
         do {
             try Data(text.utf8).write(to: url, options: .atomic)
         } catch {

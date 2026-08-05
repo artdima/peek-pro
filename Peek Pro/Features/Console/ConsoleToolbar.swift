@@ -121,8 +121,8 @@ private struct ExportMenu: View {
         let entries = model.visibleEntries
         Menu {
             Button("Export as HAR…") { model.exportHAR(entries) }
-            Button("Save as Peek Session…") {}
-                .disabled(true)
+            Button("Save as Peek Session…") { model.saveSession() }
+                .disabled(!model.canSaveSession)
             Button("Copy as Text") { model.copyText(entries) }
         } label: {
             Label("Export", systemImage: "square.and.arrow.up")
