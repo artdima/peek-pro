@@ -67,7 +67,7 @@ struct PeekFileReaderTests {
         let data = whole + Data(lastLine.utf8.prefix(lastLine.utf8.count / 2))
         let contents = try PeekFileReader.read(data)
         #expect(contents.skippedLines == 1)
-        #expect(contents.entries.count == 17)
+        #expect(contents.entries.count == (try Spec.manifest()["basic.peek"]?.entries?.count))
     }
 
     @Test("tells an empty file, a foreign file and an old format apart")

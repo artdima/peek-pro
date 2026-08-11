@@ -44,7 +44,7 @@ struct PeekFileWriterTests {
         }
     }
 
-    @Test("saves a body still on the device as unavailable, keeping its type and size")
+    @Test("keeps the marker of a body still on the device, as Peek writes it")
     func remoteBody() throws {
         let start = QueryFixtures.start
         let entry = PeekEntry(
@@ -58,9 +58,9 @@ struct PeekFileWriterTests {
         )
         let line = PeekFileWriter.entryLine(entry)
         #expect(line.contains(#""pinned":true"#))
-        #expect(line.contains(#""body":{"kind":"unavailable","reason":"notCaptured","size":2048,"type":"application/json"}"#))
+        #expect(line.contains(#""body":{"kind":"remote","size":2048,"type":"application/json"}"#))
         let reread = try PeekFileReader.read(PeekFileWriter.data(info: info, entries: [entry])).entries.first
-        #expect(reread?.response?.body == .unavailable(.notCaptured, contentType: .json, size: 2_048))
+        #expect(reread?.response?.body == .remote(size: 2_048, contentType: .json))
         #expect(reread?.isPinned == true)
     }
 

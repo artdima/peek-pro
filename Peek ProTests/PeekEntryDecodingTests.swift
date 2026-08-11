@@ -78,6 +78,19 @@ struct PeekEntryDecodingTests {
         ))
         #expect(all["streamed"]?.response?.body == .unavailable(.streamed, size: 73_400_320))
         #expect(all["long-url"]?.response?.body == .empty)
+        #expect(all["spec-remote"]?.response?.body == .remote(size: 5_242_880, contentType: .json, isTruncated: true))
+    }
+
+    @Test("reads a body held on the device, and refuses one without a size")
+    func remoteBody() throws {
+        func body(_ json: String) throws -> PeekBody {
+            try JSONDecoder().decode(PeekBody.self, from: Data(json.utf8))
+        }
+        #expect(try body(#"{"kind":"remote","size":12}"#) == .remote(size: 12))
+        #expect(try body(#"{"kind":"remote","size":12,"truncated":false,"type":"text/plain"}"#)
+            == .remote(size: 12, contentType: .plainText))
+        #expect(throws: DecodingError.self) { try body(#"{"kind":"remote"}"#) }
+        #expect(try body(#"{"kind":"hologram","size":3}"#) == .unavailable(.notCaptured, size: 3))
     }
 
     @Test("keeps repeated headers, cookies and non-ASCII text")

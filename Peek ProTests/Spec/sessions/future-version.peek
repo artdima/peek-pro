@@ -1,5 +1,5 @@
 {"format":"peek","formatVersion":2,"peekVersion":"3.0.0","name":"Peek fixtures","platform":"ios","osVersion":"18.0","startedAt":"2026-09-10T12:00:00.000Z","device":{"model":"iPhone 17"}}
 {"id":"e1","source":"dio","startedAt":"2026-09-10T12:00:00.000Z","completedAt":"2026-09-10T12:00:00.120Z","request":{"method":"GET","url":"https://api.example.com/users"},"response":{"status":200,"headers":[["Content-Type","application/json; charset=utf-8"]],"body":{"kind":"text","text":"body of e1","type":"application/json; charset=utf-8"}}}
-{"id":"e3","source":"dio","startedAt":"2026-09-10T12:00:02.000Z","completedAt":"2026-09-10T12:00:02.040Z","request":{"method":"GET","url":"https://cdn.example.com/logo.png"},"response":{"status":200,"body":{"kind":"remote","type":"image/png","size":48213}}}
+{"id":"e3","source":"dio","startedAt":"2026-09-10T12:00:02.000Z","completedAt":"2026-09-10T12:00:02.040Z","request":{"method":"GET","url":"https://cdn.example.com/logo.png"},"response":{"status":200,"body":{"kind":"hologram","type":"image/png","size":48213}}}
 {"id":"e5","source":"talker","startedAt":"2026-09-10T12:00:04.000Z","completedAt":"2026-09-10T12:00:09.000Z","pinned":true,"request":{"method":"DELETE","url":"https://api.example.com/users/1"},"failure":{"kind":"quotaExceeded","message":"slow"}}
 {"kind":"marker","label":"login finished"}

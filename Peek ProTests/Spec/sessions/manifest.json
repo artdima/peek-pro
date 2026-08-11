@@ -19,7 +19,8 @@
       "streamed",
       "spec-truncated",
       "spec-timed",
-      "spec-crashed"
+      "spec-crashed",
+      "spec-remote"
     ],
     "skipped": 0
   },
@@ -71,7 +72,8 @@
       "streamed",
       "spec-truncated",
       "spec-timed",
-      "spec-crashed"
+      "spec-crashed",
+      "spec-remote"
     ],
     "skipped": 0
   },

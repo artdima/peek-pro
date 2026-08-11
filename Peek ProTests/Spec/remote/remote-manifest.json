@@ -1,0 +1,67 @@
+{
+  "hello.json": {
+    "type": "hello",
+    "direction": "toDesktop"
+  },
+  "welcome.json": {
+    "type": "welcome",
+    "direction": "toApp"
+  },
+  "denied.json": {
+    "type": "denied",
+    "direction": "toApp"
+  },
+  "entry-add.json": {
+    "type": "entry",
+    "direction": "toDesktop"
+  },
+  "entry-update.json": {
+    "type": "entry",
+    "direction": "toDesktop"
+  },
+  "entry-remove.json": {
+    "type": "entry",
+    "direction": "toDesktop"
+  },
+  "cleared.json": {
+    "type": "cleared",
+    "direction": "toDesktop"
+  },
+  "synced.json": {
+    "type": "synced",
+    "direction": "toDesktop"
+  },
+  "dropped.json": {
+    "type": "dropped",
+    "direction": "toDesktop"
+  },
+  "body-request.json": {
+    "type": "bodyRequest",
+    "direction": "toApp"
+  },
+  "body-response.json": {
+    "type": "bodyResponse",
+    "direction": "toDesktop"
+  },
+  "body-error.json": {
+    "type": "bodyResponse",
+    "direction": "toDesktop"
+  },
+  "ping.json": {
+    "type": "ping",
+    "direction": "either"
+  },
+  "pong.json": {
+    "type": "pong",
+    "direction": "either"
+  },
+  "unknown-type.json": {
+    "type": "hologram",
+    "ignored": true
+  },
+  "unknown-keys.json": {
+    "type": "hello",
+    "direction": "toDesktop",
+    "sameAs": "hello.json"
+  }
+}

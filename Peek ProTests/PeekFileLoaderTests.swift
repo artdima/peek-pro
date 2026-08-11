@@ -28,7 +28,7 @@ struct PeekFileLoaderTests {
         #expect(loaded.file.formatVersion == 1)
         #expect(loaded.file.skippedLines == 0)
         #expect(loaded.file.failure == nil)
-        #expect(loaded.entries.count == 17)
+        #expect(loaded.entries.count == (try Spec.manifest()["basic.peek"]?.entries?.count))
     }
 
     @Test("counts skipped lines and flags a newer format")

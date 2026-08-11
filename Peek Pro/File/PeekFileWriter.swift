@@ -4,8 +4,8 @@ import Foundation
 /// so a file saved here reads the same in Peek and diffs cleanly against one Peek wrote.
 ///
 /// Two things can't come back as they were read: `extra` values that weren't strings are written as strings
-/// (the model keeps them as text), and `extra` keys are sorted. A body still on the device is saved as
-/// `unavailable` with its type and size — the file can't fetch it later.
+/// (the model keeps them as text), and `extra` keys are sorted. A body still on the device keeps its
+/// `remote` marker, as Peek writes it; a file can't fetch it, so the viewer says it wasn't saved.
 nonisolated enum PeekFileWriter {
     static let formatVersion = 1
 
@@ -105,8 +105,8 @@ nonisolated enum PeekFileWriter {
             ]
         case .unavailable(let reason, _, let size):
             members = [("kind", .string("unavailable")), ("reason", .string(reason.rawValue)), ("size", size.map(JSONValue.int))]
-        case .remote(let size, _, _):
-            members = [("kind", .string("unavailable")), ("reason", .string(PeekBodyUnavailableReason.notCaptured.rawValue)), ("size", .int(size))]
+        case .remote(let size, _, let isTruncated):
+            members = [("kind", .string("remote")), ("size", .int(size)), ("truncated", isTruncated ? .bool(true) : nil)]
         }
         members.append(("type", body.contentType.map { .string($0.description) }))
         return jsonObject(members)

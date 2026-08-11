@@ -1,6 +1,6 @@
 #!/bin/sh
-# Copies Peek's format spec and reference files into the tests and records the
-# Peek commit they came from. Peek is looked for next to this repository's folder
+# Copies Peek's specs — the session format and the remote protocol — and their
+# reference files into the tests, and records the Peek commit they came from. Peek is looked for next to this repository's folder
 # (../../peek); set PEEK_DIR to point elsewhere.
 set -eu
 
@@ -22,9 +22,14 @@ fi
 commit=$(git -C "$peek" rev-parse HEAD)
 
 rm -rf "$dest"
-mkdir -p "$dest/sessions"
-cp "$spec/session-format.md" "$dest/"
+mkdir -p "$dest/sessions" "$dest/remote"
+cp "$spec/session-format.md" "$spec/remote-protocol.md" "$dest/"
 cp "$spec/fixtures/sessions/"* "$dest/sessions/"
+# Xcode puts the test resources in one flat folder, where the frames' own
+# manifest.json would clash with the sessions' one: prefix them all.
+for frame in "$spec/fixtures/remote/"*; do
+    cp "$frame" "$dest/remote/remote-$(basename "$frame")"
+done
 printf '%s\n' "$commit" > "$dest/PEEK_SPEC_COMMIT"
 
 echo "Synced the Peek spec at $(git -C "$peek" rev-parse --short HEAD)."

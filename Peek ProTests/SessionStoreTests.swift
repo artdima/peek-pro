@@ -136,7 +136,7 @@ struct SessionHubTests {
         hub.addFile(loaded.file, entries: loaded.entries)
         feed.select(.waiting)
         #expect(hub.files.map(\.id) == [loaded.file.id])
-        #expect(hub.entries(in: loaded.file.id).count == 17)
+        #expect(hub.entries(in: loaded.file.id).count == (try Spec.manifest()["basic.peek"]?.entries?.count))
         #expect(hub.sessions.isEmpty)
         feed.select(.file)
         #expect(hub.files.first?.id == loaded.file.id)

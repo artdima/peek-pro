@@ -99,7 +99,7 @@ nonisolated extension PeekHeaders: Decodable {
 
 nonisolated extension PeekBody: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case kind, type, size, text, bytes, fields, files, reason
+        case kind, type, size, text, bytes, fields, files, reason, truncated
     }
 
     init(from decoder: any Decoder) throws {
@@ -125,8 +125,11 @@ nonisolated extension PeekBody: Decodable {
             let reason = (try? container.decodeIfPresent(String.self, forKey: .reason))
                 .flatMap(PeekBodyUnavailableReason.init(rawValue:))
             self = .unavailable(reason ?? .notCaptured, contentType: type, size: size)
+        case "remote":
+            let isTruncated = try container.decodeIfPresent(Bool.self, forKey: .truncated) ?? false
+            self = .remote(size: try container.decode(Int.self, forKey: .size), contentType: type, isTruncated: isTruncated)
         default:
-            // A kind from a newer writer (`remote` among them in format 1): the body exists, but not here.
+            // A kind from a newer writer: the body exists, but not in a form this reader holds.
             self = .unavailable(.notCaptured, contentType: type, size: size)
         }
     }

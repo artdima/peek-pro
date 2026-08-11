@@ -217,6 +217,19 @@ A File is an object: `name` (string, required — the form field), `filename`
 | `reason` | string | yes | `streamed` — a stream that was never buffered; `tooLarge` — over the capture limit; `notCaptured` — the source never handed it over; `unreadable` — it could not be read or decoded. Unknown values read as `notCaptured`. |
 | `size` | integer | no | The full size in bytes, when known. |
 
+**`remote`** — a body that exists and can be had, but is held elsewhere: on
+the device, when a desktop viewer shows calls it streams. The viewer asks for it
+when someone wants to read it; see the remote protocol. A file keeps the marker
+only when the body was never loaded.
+
+| Key | Type | Required | Meaning |
+|---|---|---|---|
+| `size` | integer | yes | The full size in bytes. |
+| `truncated` | boolean | no | `true` when the holder kept only a prefix, so loading gives a cut-off body. Only `true` is written; default `false`. |
+
+A reader that cannot fetch it shows what it knows — type and size — and says
+the body was not loaded.
+
 **Any other `kind`** comes from a newer writer. Read it as `unavailable` with
 reason `notCaptured`, keeping its `type` and `size`: the body exists, but not in
 a form this reader holds.
@@ -270,7 +283,7 @@ file that must be refused.
 
 | File | What it shows |
 |---|---|
-| `basic.peek` | Every shape Peek writes: pending, completed and failed calls; text, JSON, bytes, form, multipart, cut-off and unavailable bodies; redirects; repeated headers; timings with fractions; a failure with details and a stack trace; `extra`; non-ASCII text. |
+| `basic.peek` | Every shape Peek writes: pending, completed and failed calls; text, JSON, bytes, form, multipart, cut-off, unavailable and remote bodies; redirects; repeated headers; timings with fractions; a failure with details and a stack trace; `extra`; non-ASCII text. |
 | `header-only.peek` | A session with no calls. |
 | `broken-line.peek` | A line cut off halfway, a line missing its request and a blank line among good ones: two skipped. |
 | `appended.peek` | A call written pending, then again completed: one entry, completed, in the first line's place. |
