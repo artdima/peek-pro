@@ -288,3 +288,27 @@ private nonisolated extension KeyedDecodingContainer {
         return url
     }
 }
+
+/// The app as a `.peek` header and a `hello` frame describe it; the keys are the same in both.
+nonisolated extension PeekSessionInfo: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case peekVersion, name, platform, osVersion, startedAt
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let startedAtText = try container.decode(String.self, forKey: .startedAt)
+        guard let startedAt = PeekTimestamp.parse(startedAtText) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .startedAt, in: container, debugDescription: "Not an ISO 8601 time: \(startedAtText)"
+            )
+        }
+        self.init(
+            name: try container.decodeIfPresent(String.self, forKey: .name),
+            platform: PeekPlatform(rawValue: try container.decode(String.self, forKey: .platform)),
+            osVersion: try container.decodeIfPresent(String.self, forKey: .osVersion),
+            peekVersion: try container.decode(String.self, forKey: .peekVersion),
+            startedAt: startedAt
+        )
+    }
+}

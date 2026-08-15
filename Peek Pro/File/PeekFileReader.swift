@@ -107,7 +107,7 @@ nonisolated enum PeekFileReader {
             throw PeekFileError.notASession
         }
         guard let version = marker.formatVersion else { throw PeekFileError.notASession }
-        let info = try? decoder.decode(HeaderInfo.self, from: line).info
+        let info = try? decoder.decode(PeekSessionInfo.self, from: line)
         guard version >= oldestReadableFormatVersion else {
             throw PeekFileError.unsupportedFormat(version: version, info: info)
         }
@@ -127,31 +127,6 @@ nonisolated enum PeekFileReader {
 
         private enum CodingKeys: String, CodingKey {
             case format, formatVersion
-        }
-    }
-
-    private nonisolated struct HeaderInfo: Decodable {
-        let info: PeekSessionInfo
-
-        private enum CodingKeys: String, CodingKey {
-            case peekVersion, name, platform, osVersion, startedAt
-        }
-
-        init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            let startedAtText = try container.decode(String.self, forKey: .startedAt)
-            guard let startedAt = PeekTimestamp.parse(startedAtText) else {
-                throw DecodingError.dataCorruptedError(
-                    forKey: .startedAt, in: container, debugDescription: "Not an ISO 8601 time: \(startedAtText)"
-                )
-            }
-            info = PeekSessionInfo(
-                name: try container.decodeIfPresent(String.self, forKey: .name),
-                platform: PeekPlatform(rawValue: try container.decode(String.self, forKey: .platform)),
-                osVersion: try container.decodeIfPresent(String.self, forKey: .osVersion),
-                peekVersion: try container.decode(String.self, forKey: .peekVersion),
-                startedAt: startedAt
-            )
         }
     }
 }

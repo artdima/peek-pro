@@ -22,15 +22,22 @@ nonisolated enum PeekFileWriter {
     }
 
     static func headerLine(_ info: PeekSessionInfo) -> String {
-        jsonObject([
-            ("format", .string("peek")),
-            ("formatVersion", .int(formatVersion)),
+        jsonObject([("format", .string("peek")), ("formatVersion", .int(formatVersion))] + sessionMembers(info)).encoded()
+    }
+
+    /// What a `hello` frame says about the app — the header without its format keys.
+    static func encode(_ info: PeekSessionInfo) -> JSONValue {
+        jsonObject(sessionMembers(info))
+    }
+
+    private static func sessionMembers(_ info: PeekSessionInfo) -> [(String, JSONValue?)] {
+        [
             ("peekVersion", .string(info.peekVersion)),
             ("name", info.name.map(JSONValue.string)),
             ("platform", .string(info.platform.rawValue)),
             ("osVersion", info.osVersion.map(JSONValue.string)),
             ("startedAt", .string(PeekExportFormat.timestamp(info.startedAt))),
-        ]).encoded()
+        ]
     }
 
     static func entryLine(_ entry: PeekEntry) -> String {
@@ -81,7 +88,7 @@ nonisolated enum PeekFileWriter {
         JSONValue.array(headers.entries.map { JSONValue.array([.string($0.name), .string($0.value)]) })
     }
 
-    private static func encode(_ body: PeekBody) -> JSONValue {
+    static func encode(_ body: PeekBody) -> JSONValue {
         var members: [(String, JSONValue?)]
         switch body {
         case .empty:

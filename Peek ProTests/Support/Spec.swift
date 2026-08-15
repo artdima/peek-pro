@@ -66,4 +66,22 @@ enum Spec {
     static func manifest() throws -> [String: Expectation] {
         try JSONDecoder().decode([String: Expectation].self, from: data("manifest.json"))
     }
+
+    /// What `remote-manifest.json` says of a reference frame.
+    struct FrameExpectation: Decodable, Equatable {
+        var type: String
+        var direction: String?
+        var ignored: Bool?
+        var sameAs: String?
+    }
+
+    /// Every reference frame by its name in Peek (`hello.json`), with what reading it must give.
+    static func frames() throws -> [String: FrameExpectation] {
+        try JSONDecoder().decode([String: FrameExpectation].self, from: data("remote-manifest.json"))
+    }
+
+    /// The one line of a reference frame, by its name in Peek; the sync script prefixes it with `remote-`.
+    static func frameText(_ name: String) throws -> String {
+        String(decoding: try data("remote-\(name)"), as: UTF8.self).trimmingCharacters(in: .newlines)
+    }
 }
