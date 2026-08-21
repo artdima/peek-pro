@@ -3,7 +3,7 @@ import Observation
 
 /// Every source the window shows: live devices, `.peek` files, and the server they connect to.
 /// Screens read it and act through it; what feeds it — the mock scenarios now, the WebSocket server
-/// in Phase 5 — uses the feeding half below.
+/// — uses the feeding half below.
 @Observable
 final class SessionHub {
     private(set) var server: PeekServerState
@@ -24,10 +24,14 @@ final class SessionHub {
         port: PeekServerState.defaultPort,
         addresses: [],
         bonjourName: nil,
-        token: PeekServerState.newToken()
+        token: PeekServerState.launchToken(
+            policy: TokenPolicy.current,
+            stored: UserDefaults.standard.string(forKey: SettingsKey.token)
+        )
     )) {
         self.server = server
         applyServerSettings()
+        applyTokenPolicy()
     }
 
     // MARK: Reading
@@ -138,6 +142,16 @@ final class SessionHub {
 
     func regenerateToken() {
         server.token = PeekServerState.newToken()
+        applyTokenPolicy()
+    }
+
+    /// Remembers the token while the policy keeps it, and forgets it otherwise.
+    func applyTokenPolicy() {
+        let defaults = UserDefaults.standard
+        switch TokenPolicy.current {
+        case .persistent: defaults.set(server.token, forKey: SettingsKey.token)
+        case .perLaunch: defaults.removeObject(forKey: SettingsKey.token)
+        }
     }
 
     // MARK: Feeding
@@ -233,5 +247,10 @@ extension PeekServerState {
         let alphabet = Array("abcdefghjkmnpqrstuvwxyz23456789")
         let groups = (0..<3).map { _ in String((0..<4).map { _ in alphabet.randomElement()! }) }
         return groups.joined(separator: "-")
+    }
+
+    static func launchToken(policy: TokenPolicy, stored: String?) -> String {
+        if policy == .persistent, let stored, !stored.isEmpty { return stored }
+        return newToken()
     }
 }

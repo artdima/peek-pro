@@ -3,6 +3,8 @@ import Foundation
 enum SettingsKey {
     static let port = "server.port"
     static let tokenPolicy = "server.tokenPolicy"
+    /// Kept only while the policy is `.persistent`.
+    static let token = "server.token"
     static let bonjourEnabled = "server.bonjourEnabled"
     static let bonjourName = "server.bonjourName"
     static let bodyFontSize = "body.fontSize"
@@ -17,6 +19,10 @@ enum TokenPolicy: String, CaseIterable, Identifiable {
     case persistent
 
     var id: Self { self }
+
+    static var current: TokenPolicy {
+        TokenPolicy(rawValue: UserDefaults.standard.string(forKey: SettingsKey.tokenPolicy) ?? "") ?? .perLaunch
+    }
 
     var title: String {
         switch self {

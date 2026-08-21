@@ -7,15 +7,18 @@ final class MockFeed {
     private(set) var scenario: MockScenario
     @ObservationIgnored private let hub: SessionHub
     @ObservationIgnored private let isLive: Bool
+    /// Off when the real server owns the hub's server state.
+    @ObservationIgnored private let fakesServer: Bool
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var pendingTemplates: [PeekId: PeekEntry] = [:]
     @ObservationIgnored private var tickCount = 0
     @ObservationIgnored private var failedLoads: Set<PeekBodyLoadKey> = []
 
-    init(hub: SessionHub, scenario: MockScenario = .live, isLive: Bool = true) {
+    init(hub: SessionHub, scenario: MockScenario = .live, isLive: Bool = true, fakesServer: Bool = true) {
         self.hub = hub
         self.scenario = scenario
         self.isLive = isLive
+        self.fakesServer = fakesServer
         hub.bodyLoader = { [weak self] key, id in self?.loadBody(key, in: id) }
         load(scenario)
     }
@@ -58,8 +61,10 @@ final class MockFeed {
         pendingTemplates = [:]
         failedLoads = []
         hub.reset()
-        hub.setServer(FixtureSessions.server)
-        hub.applyServerSettings()
+        if fakesServer {
+            hub.setServer(FixtureSessions.server)
+            hub.applyServerSettings()
+        }
 
         switch scenario {
         case .waiting:

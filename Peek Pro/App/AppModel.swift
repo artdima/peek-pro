@@ -6,8 +6,10 @@ import UniformTypeIdentifiers
 @Observable
 final class AppModel {
     let store: SessionHub
-    /// Feeds `store` with mock devices until the server exists (Phase 5).
+    /// Feeds `store` with mock devices until the server does (Phase 5).
     let mocks: MockFeed
+    /// Nil in previews and tests, which show the fixture server instead.
+    let remote: PeekRemoteHost?
     var selectedSessionID: PeekSessionID? {
         didSet {
             guard oldValue != selectedSessionID else { return }
@@ -50,10 +52,13 @@ final class AppModel {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
 
-    init(scenario: MockScenario = .live, isLive: Bool = true, restoresOpenFiles: Bool = true) {
+    init(scenario: MockScenario = .live, isLive: Bool = true, restoresOpenFiles: Bool = true, servesDevices: Bool = false) {
         let store = SessionHub()
         self.store = store
-        mocks = MockFeed(hub: store, scenario: scenario, isLive: isLive)
+        let remote = servesDevices ? PeekRemoteHost(hub: store) : nil
+        self.remote = remote
+        mocks = MockFeed(hub: store, scenario: scenario, isLive: isLive, fakesServer: remote == nil)
+        remote?.start()
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
         if restoresOpenFiles { reopenFiles() }
@@ -61,8 +66,15 @@ final class AppModel {
 
     func selectScenario(_ scenario: MockScenario) {
         mocks.select(scenario)
+        if scenario != .portInUse { remote?.publish() }
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
+    }
+
+    /// After Settings changed the port or the Bonjour name.
+    func applyServerSettings() {
+        store.applyServerSettings()
+        remote?.applySettings()
     }
 
     private func markAllSeen() {

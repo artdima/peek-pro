@@ -31,7 +31,7 @@ private struct ConnectionSettings: View {
                 TextField("Port", value: $port, format: .number.grouping(.never))
                     .onSubmit {
                         port = min(max(port, 1_024), 65_535)
-                        model.store.applyServerSettings()
+                        model.applyServerSettings()
                     }
                 LabeledContent("Status") {
                     HStack(spacing: 6) {
@@ -61,6 +61,7 @@ private struct ConnectionSettings: View {
                 Picker("Token", selection: $tokenPolicy) {
                     ForEach(TokenPolicy.allCases) { Text($0.title).tag($0) }
                 }
+                .onChange(of: tokenPolicy) { model.store.applyTokenPolicy() }
                 LabeledContent("Current") {
                     HStack(spacing: 6) {
                         Text(server.token)
@@ -79,10 +80,10 @@ private struct ConnectionSettings: View {
 
             Section {
                 Toggle("Advertise on the local network", isOn: $bonjourEnabled)
-                    .onChange(of: bonjourEnabled) { model.store.applyServerSettings() }
+                    .onChange(of: bonjourEnabled) { model.applyServerSettings() }
                 TextField("Name", text: $bonjourName, prompt: Text(FixtureSessions.server.bonjourName ?? "Peek Pro"))
                     .disabled(!bonjourEnabled)
-                    .onSubmit { model.store.applyServerSettings() }
+                    .onSubmit { model.applyServerSettings() }
             } header: {
                 Text("Bonjour")
             } footer: {
