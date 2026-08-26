@@ -7,6 +7,7 @@ final class PeekRemoteHost {
     nonisolated static let retryInterval = Duration.seconds(5)
 
     let server: PeekRemoteServer
+    let sessions: PeekRemoteSessions
     private let hub: SessionHub
     private let pathMonitor = NWPathMonitor()
     private var retry: Task<Void, Never>?
@@ -14,6 +15,9 @@ final class PeekRemoteHost {
     init(hub: SessionHub) {
         self.hub = hub
         server = PeekRemoteServer(port: hub.server.port)
+        let sessions = PeekRemoteSessions(hub: hub)
+        self.sessions = sessions
+        server.onConnection = { sessions.accept($0) }
         server.onStateChange = { [weak self] _ in
             self?.publish()
             self?.retryIfNeeded()

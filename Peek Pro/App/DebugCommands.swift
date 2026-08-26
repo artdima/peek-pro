@@ -10,7 +10,7 @@ struct DebugCommands: Commands {
             Section("Scenario") {
                 ForEach(Array(MockScenario.allCases.enumerated()), id: \.element) { index, scenario in
                     Toggle(scenario.title, isOn: Binding(
-                        get: { model.mocks.scenario == scenario },
+                        get: { model.mocks?.scenario == scenario },
                         set: { _ in model.selectScenario(scenario) }
                     ))
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.control, .option])

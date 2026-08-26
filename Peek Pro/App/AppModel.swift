@@ -6,8 +6,8 @@ import UniformTypeIdentifiers
 @Observable
 final class AppModel {
     let store: SessionHub
-    /// Feeds `store` with mock devices until the server does (Phase 5).
-    let mocks: MockFeed
+    /// Mock devices and states for previews and the Debug menu; never in release.
+    let mocks: MockFeed?
     /// Nil in previews and tests, which show the fixture server instead.
     let remote: PeekRemoteHost?
     var selectedSessionID: PeekSessionID? {
@@ -52,20 +52,24 @@ final class AppModel {
         didSet { UserDefaults.standard.set(listGrouping.rawValue, forKey: ConsoleListGrouping.storageKey) }
     }
 
-    init(scenario: MockScenario = .live, isLive: Bool = true, restoresOpenFiles: Bool = true, servesDevices: Bool = false) {
+    init(scenario: MockScenario? = nil, isLive: Bool = true, restoresOpenFiles: Bool = true, servesDevices: Bool = false) {
         let store = SessionHub()
         self.store = store
         let remote = servesDevices ? PeekRemoteHost(hub: store) : nil
         self.remote = remote
-        mocks = MockFeed(hub: store, scenario: scenario, isLive: isLive, fakesServer: remote == nil)
+        mocks = scenario.map { MockFeed(hub: store, scenario: $0, isLive: isLive, fakesServer: remote == nil) }
         remote?.start()
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
         if restoresOpenFiles { reopenFiles() }
+        remote?.sessions.onOpen = { [weak self] id in
+            guard let self, self.selectedSessionID == nil else { return }
+            self.selectedSessionID = id
+        }
     }
 
     func selectScenario(_ scenario: MockScenario) {
-        mocks.select(scenario)
+        mocks?.select(scenario)
         if scenario != .portInUse { remote?.publish() }
         selectedSessionID = store.sessionIDs.first
         markAllSeen()
@@ -93,7 +97,7 @@ final class AppModel {
     }
 
     func openDemoFiles() {
-        mocks.openDemoFiles()
+        store.addDemoFiles()
         selectedSessionID = store.files.first?.id
     }
 

@@ -139,7 +139,7 @@ extension PeekRemoteServer {
 }
 
 /// One device's WebSocket. Text frames only: the protocol never sends binary.
-final class PeekRemoteConnection: Identifiable {
+final class PeekRemoteConnection: Identifiable, PeekRemoteChannel {
     let id = UUID()
     /// Where the device connects from, as a person would type it.
     let address: String

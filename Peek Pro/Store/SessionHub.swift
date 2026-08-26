@@ -156,23 +156,23 @@ final class SessionHub {
 
     // MARK: Feeding
 
-    /// Drops everything but the files the user opened.
-    func reset() {
-        sessions = []
-        rejected = []
-        paused = []
-        bodyLoads = [:]
+    /// Drops the files that only stand in for opened ones.
+    func removeDemoFiles() {
+        for file in files where !openedFileIDs.contains(file.id) { stores[file.id] = nil }
         files.removeAll { !openedFileIDs.contains($0.id) }
-        stores = stores.filter { openedFileIDs.contains($0.key) }
     }
 
     func setServer(_ server: PeekServerState) {
         self.server = server
     }
 
+    /// A session seen before keeps its place, and its entries give way to the history that follows.
     func addSession(_ session: PeekLiveSession, entries: [PeekEntry] = []) {
-        sessions.removeAll { $0.id == session.id }
-        sessions.append(session)
+        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[index] = session
+        } else {
+            sessions.append(session)
+        }
         stores[session.id] = SessionStore(entries: entries)
     }
 
@@ -181,12 +181,13 @@ final class SessionHub {
         insertFile(file, entries: entries, atTop: false)
     }
 
-    func setRejected(_ rejected: [PeekRejectedConnection]) {
-        self.rejected = rejected
-    }
-
-    func setPaused(_ paused: Set<PeekSessionID>) {
-        self.paused = paused
+    /// Newest last; a repeat of the same refusal replaces the older one.
+    func addRejected(_ connection: PeekRejectedConnection) {
+        rejected.removeAll {
+            $0.address == connection.address && $0.name == connection.name && $0.reason == connection.reason
+        }
+        rejected.append(connection)
+        if rejected.count > Self.rejectedLimit { rejected.removeFirst(rejected.count - Self.rejectedLimit) }
     }
 
     func upsert(_ entries: some Sequence<PeekEntry>, in id: PeekSessionID) {
@@ -226,6 +227,8 @@ final class SessionHub {
     func failBodyLoad(_ key: PeekBodyLoadKey, message: String) {
         bodyLoads[key] = .failed(message)
     }
+
+    private static let rejectedLimit = 20
 
     private func insertFile(_ file: PeekSessionFile, entries: [PeekEntry], atTop: Bool) {
         if let index = files.firstIndex(where: { $0.id == file.id }) {

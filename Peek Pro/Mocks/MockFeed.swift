@@ -13,6 +13,8 @@ final class MockFeed {
     @ObservationIgnored private var pendingTemplates: [PeekId: PeekEntry] = [:]
     @ObservationIgnored private var tickCount = 0
     @ObservationIgnored private var failedLoads: Set<PeekBodyLoadKey> = []
+    /// What this feed put into the hub, so a scenario switch leaves real devices alone.
+    @ObservationIgnored private var ownSessions: [PeekSessionID] = []
 
     init(hub: SessionHub, scenario: MockScenario = .live, isLive: Bool = true, fakesServer: Bool = true) {
         self.hub = hub
@@ -29,14 +31,16 @@ final class MockFeed {
         load(scenario)
     }
 
-    /// The demo files behind "Open Demo Session".
     func openDemoFiles() {
-        hub.addDemoFile(FixtureSessions.savedSession, entries: Fixtures.copies(of: Fixtures.session, prefix: "saved", shiftedBy: -73_000))
-        hub.addDemoFile(FixtureSessions.bugReport, entries: FixtureSessions.bugReportEntries)
+        hub.addDemoFiles()
     }
 
     /// Pretends to fetch a body from the device; the map tile fails once so Retry can be seen.
     private func loadBody(_ key: PeekBodyLoadKey, in sessionID: PeekSessionID) {
+        guard ownSessions.contains(sessionID) || hub.file(sessionID) != nil else {
+            hub.failBodyLoad(key, message: "Loading bodies from a device isn't supported yet.")
+            return
+        }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
             guard let self, self.hub.bodyLoads[key] == .loading else { return }
@@ -60,7 +64,7 @@ final class MockFeed {
         ticker = nil
         pendingTemplates = [:]
         failedLoads = []
-        hub.reset()
+        removeOwn()
         if fakesServer {
             hub.setServer(FixtureSessions.server)
             hub.applyServerSettings()
@@ -74,30 +78,42 @@ final class MockFeed {
             server.status = .portInUse
             hub.setServer(server)
         case .live, .paused:
-            hub.addSession(FixtureSessions.iPhoneSession, entries: Fixtures.session)
-            hub.addSession(FixtureSessions.pixelSession, entries: FixtureSessions.pixelEntries)
-            hub.addSession(FixtureSessions.chromeSession)
-            hub.addSession(FixtureSessions.iPadSession, entries: FixtureSessions.iPadEntries)
-            if scenario == .paused { hub.setPaused([FixtureSessions.iPhoneSession.id]) }
+            add(FixtureSessions.iPhoneSession, entries: Fixtures.session)
+            add(FixtureSessions.pixelSession, entries: FixtureSessions.pixelEntries)
+            add(FixtureSessions.chromeSession)
+            add(FixtureSessions.iPadSession, entries: FixtureSessions.iPadEntries)
+            if scenario == .paused { hub.togglePaused(FixtureSessions.iPhoneSession.id) }
         case .large:
-            hub.addSession(FixtureSessions.iPhoneSession, entries: Fixtures.large)
+            add(FixtureSessions.iPhoneSession, entries: Fixtures.large)
         case .huge:
-            hub.addSession(FixtureSessions.iPhoneSession, entries: Fixtures.bulk(SessionStore.defaultLimit))
+            add(FixtureSessions.iPhoneSession, entries: Fixtures.bulk(SessionStore.defaultLimit))
         case .disconnected:
             var iPhone = FixtureSessions.iPhoneSession
             iPhone.connection = .disconnected
             iPhone.disconnectedAt = Fixtures.start.addingTimeInterval(75)
-            hub.addSession(iPhone, entries: Fixtures.session)
-            hub.addSession(FixtureSessions.iPadSession, entries: FixtureSessions.iPadEntries)
+            add(iPhone, entries: Fixtures.session)
+            add(FixtureSessions.iPadSession, entries: FixtureSessions.iPadEntries)
         case .file:
             openDemoFiles()
             hub.addDemoFile(FixtureSessions.futureFile, entries: FixtureSessions.futureFileEntries)
             hub.addDemoFile(FixtureSessions.legacyFile, entries: [])
         case .rejected:
-            hub.setRejected(FixtureSessions.rejected)
+            FixtureSessions.rejected.forEach(hub.addRejected)
         }
 
         if isLive && (scenario == .live || scenario == .huge) { startTicking() }
+    }
+
+    private func add(_ session: PeekLiveSession, entries: [PeekEntry] = []) {
+        hub.addSession(session, entries: entries)
+        ownSessions.append(session.id)
+    }
+
+    private func removeOwn() {
+        ownSessions.forEach(hub.removeSession)
+        ownSessions = []
+        for connection in FixtureSessions.rejected { hub.dismissRejected(connection.id) }
+        hub.removeDemoFiles()
     }
 
     private func startTicking() {
