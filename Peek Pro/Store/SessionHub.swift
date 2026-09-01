@@ -176,7 +176,38 @@ final class SessionHub {
         stores[session.id] = SessionStore(entries: entries)
     }
 
-    /// A file that stands in for one the user opened; `reset()` drops it.
+    /// A device that connected, or came back: a session seen before keeps its place and its entries
+    /// until `replaceEntries` brings the history it sent again.
+    func connectSession(_ session: PeekLiveSession) {
+        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+            var session = session
+            session.droppedCount = sessions[index].droppedCount
+            sessions[index] = session
+        } else {
+            sessions.append(session)
+        }
+        if stores[session.id] == nil { stores[session.id] = SessionStore() }
+    }
+
+    /// Everything the device holds, in one go; what the viewer pinned stays pinned.
+    func replaceEntries(_ store: SessionStore, in id: PeekSessionID) {
+        var store = store
+        if let old = stores[id] {
+            store.setPinned(old.entries.lazy.filter(\.isPinned).map(\.id), to: true)
+        }
+        stores[id] = store
+    }
+
+    func remove(_ entryID: PeekId, in id: PeekSessionID) {
+        stores[id]?.remove(entryID)
+    }
+
+    func addDropped(_ count: Int, in id: PeekSessionID) {
+        guard count > 0, let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        sessions[index].droppedCount += count
+    }
+
+    /// A file that stands in for one the user opened; `removeDemoFiles()` drops it.
     func addDemoFile(_ file: PeekSessionFile, entries: [PeekEntry]) {
         insertFile(file, entries: entries, atTop: false)
     }

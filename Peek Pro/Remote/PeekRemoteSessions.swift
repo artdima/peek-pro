@@ -14,14 +14,20 @@ final class PeekRemoteSessions {
     private let hub: SessionHub
     private let serverVersion: String?
     private var greeting: [ObjectIdentifier: PeekRemoteChannel] = [:]
-    private var channels: [String: PeekRemoteChannel] = [:]
+    private var links: [String: Link] = [:]
+
+    private struct Link {
+        let channel: PeekRemoteChannel
+        /// The history until `synced`, shown in one go rather than call by call.
+        var history: SessionStore? = SessionStore()
+    }
 
     init(hub: SessionHub, serverVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) {
         self.hub = hub
         self.serverVersion = serverVersion
     }
 
-    var connectedCount: Int { channels.count }
+    var connectedCount: Int { links.count }
 
     func accept(_ channel: PeekRemoteChannel) {
         let id = ObjectIdentifier(channel)
@@ -67,13 +73,13 @@ final class PeekRemoteSessions {
     private func open(_ hello: PeekRemoteHello, on channel: PeekRemoteChannel) {
         let key = hello.sessionID
         // The app came back before the old socket noticed it was gone.
-        if let previous = channels[key], previous !== channel {
+        if let previous = links[key]?.channel, previous !== channel {
             previous.onText = nil
             previous.onClose = nil
             previous.close()
         }
-        channels[key] = channel
-        hub.addSession(PeekLiveSession(
+        links[key] = Link(channel: channel)
+        hub.connectSession(PeekLiveSession(
             key: key,
             info: hello.info,
             connection: .connected,
@@ -83,15 +89,41 @@ final class PeekRemoteSessions {
         ))
         channel.onText = { [weak self] text in self?.receive(text, in: key) }
         channel.onClose = { [weak self, weak channel] in
-            guard let self, let channel, self.channels[key] === channel else { return }
-            self.channels[key] = nil
+            guard let self, let channel, self.links[key]?.channel === channel else { return }
+            self.links[key] = nil
             self.hub.disconnect(.live(key))
         }
         onOpen?(.live(key))
     }
 
-    /// Entries, bodies and pings come in the items that follow.
-    private func receive(_ text: String, in key: String) {}
+    private func receive(_ text: String, in key: String) {
+        guard let frame = try? PeekRemoteFrame(text: text), links[key] != nil else { return }
+        let id = PeekSessionID.live(key)
+        let inHistory = links[key]?.history != nil
+        switch frame {
+        case .entryAdded(let entry), .entryUpdated(let entry):
+            if inHistory {
+                links[key]?.history?.upsert(entry)
+            } else if !hub.isPaused(id) || hub.entry(entry.id, in: id) != nil {
+                // Paused keeps new calls out, but those already shown still finish.
+                hub.upsert(CollectionOfOne(entry), in: id)
+            }
+        case .entryRemoved(let entryID):
+            if inHistory { links[key]?.history?.remove(entryID) } else { hub.remove(entryID, in: id) }
+        case .cleared:
+            if inHistory { links[key]?.history?.clear() } else { hub.clear(id) }
+        case .synced:
+            guard let history = links[key]?.history else { return }
+            links[key]?.history = nil
+            hub.replaceEntries(history, in: id)
+        case .dropped(let count):
+            hub.addDropped(count, in: id)
+        case .ping:
+            links[key]?.channel.send(PeekRemoteFrame.pong.text)
+        default:
+            break
+        }
+    }
 
     private func rejection(of hello: PeekRemoteHello, from address: String, _ denial: PeekRemoteFrame) -> PeekRejectedConnection {
         let reason: PeekRejectedConnection.Reason = if case .denied(.protocolVersion, _) = denial {
