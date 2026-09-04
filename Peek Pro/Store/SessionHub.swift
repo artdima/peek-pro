@@ -11,7 +11,7 @@ final class SessionHub {
     private(set) var files: [PeekSessionFile] = []
     private(set) var rejected: [PeekRejectedConnection] = []
     private(set) var paused: Set<PeekSessionID> = []
-    private(set) var bodyLoads: [PeekBodyLoadKey: PeekBodyLoadState] = [:]
+    private var bodyLoads: [PeekSessionID: [PeekBodyLoadKey: PeekBodyLoadState]] = [:]
     private var stores: [PeekSessionID: SessionStore] = [:]
 
     /// Files the user opened, as opposed to demo ones: `reset()` keeps them.
@@ -71,6 +71,10 @@ final class SessionHub {
         session(id)?.info ?? file(id)?.info
     }
 
+    func bodyLoad(_ key: PeekBodyLoadKey, in id: PeekSessionID) -> PeekBodyLoadState? {
+        bodyLoads[id]?[key]
+    }
+
     func isPaused(_ id: PeekSessionID) -> Bool {
         paused.contains(id)
     }
@@ -93,12 +97,14 @@ final class SessionHub {
     func closeFile(_ id: PeekSessionID) {
         files.removeAll { $0.id == id }
         stores[id] = nil
+        bodyLoads[id] = nil
         openedFileIDs.remove(id)
     }
 
     func removeSession(_ id: PeekSessionID) {
         sessions.removeAll { $0.id == id }
         stores[id] = nil
+        bodyLoads[id] = nil
         paused.remove(id)
     }
 
@@ -119,12 +125,12 @@ final class SessionHub {
     }
 
     func loadBody(_ key: PeekBodyLoadKey, in id: PeekSessionID) {
-        guard bodyLoads[key] != .loading else { return }
+        guard bodyLoads[id]?[key] != .loading else { return }
         guard let bodyLoader else {
-            bodyLoads[key] = .failed("The device isn't connected.")
+            bodyLoads[id, default: [:]][key] = .failed("The device isn't connected.")
             return
         }
-        bodyLoads[key] = .loading
+        bodyLoads[id, default: [:]][key] = .loading
         bodyLoader(key, id)
     }
 
@@ -158,7 +164,10 @@ final class SessionHub {
 
     /// Drops the files that only stand in for opened ones.
     func removeDemoFiles() {
-        for file in files where !openedFileIDs.contains(file.id) { stores[file.id] = nil }
+        for file in files where !openedFileIDs.contains(file.id) {
+            stores[file.id] = nil
+            bodyLoads[file.id] = nil
+        }
         files.removeAll { !openedFileIDs.contains($0.id) }
     }
 
@@ -189,11 +198,15 @@ final class SessionHub {
         if stores[session.id] == nil { stores[session.id] = SessionStore() }
     }
 
-    /// Everything the device holds, in one go; what the viewer pinned stays pinned.
+    /// Everything the device holds, in one go; pins and bodies already fetched stay.
     func replaceEntries(_ store: SessionStore, in id: PeekSessionID) {
         var store = store
         if let old = stores[id] {
             store.setPinned(old.entries.lazy.filter(\.isPinned).map(\.id), to: true)
+            for entry in store.entries where entry.hasRemoteBody {
+                guard let held = old.entry(entry.id) else { continue }
+                store.update(entry.id) { $0 = $0.keepingLoadedBodies(of: held) }
+            }
         }
         stores[id] = store
     }
@@ -226,37 +239,21 @@ final class SessionHub {
     }
 
     func completeBodyLoad(_ key: PeekBodyLoadKey, in id: PeekSessionID, with body: PeekBody) {
-        bodyLoads[key] = nil
+        bodyLoads[id]?[key] = nil
         stores[id]?.update(key.entryID) { entry in
-            switch key.side {
-            case .response:
-                guard let response = entry.response else { return }
-                entry.response = PeekResponse(
-                    statusCode: response.statusCode,
-                    statusMessage: response.statusMessage,
-                    headers: response.headers,
-                    body: body,
-                    redirects: response.redirects
-                )
-            case .request:
-                let request = entry.request
-                entry = PeekEntry(
-                    id: entry.id,
-                    request: PeekRequest(method: request.method, uri: request.uri, headers: request.headers, body: body, extra: request.extra),
-                    startedAt: entry.startedAt,
-                    source: entry.source,
-                    response: entry.response,
-                    failure: entry.failure,
-                    completedAt: entry.completedAt,
-                    isPinned: entry.isPinned,
-                    timings: entry.timings
-                )
-            }
+            entry = entry.replacingBody(body, on: key.side)
         }
     }
 
-    func failBodyLoad(_ key: PeekBodyLoadKey, message: String) {
-        bodyLoads[key] = .failed(message)
+    func failBodyLoad(_ key: PeekBodyLoadKey, in id: PeekSessionID, message: String) {
+        bodyLoads[id, default: [:]][key] = .failed(message)
+    }
+
+    /// A call as the device sent it, keeping the bodies already fetched for it.
+    func upsertFromDevice(_ entry: PeekEntry, in id: PeekSessionID) {
+        var entry = entry
+        if let held = stores[id]?.entry(entry.id) { entry = entry.keepingLoadedBodies(of: held) }
+        stores[id, default: SessionStore()].upsert(entry)
     }
 
     private static let rejectedLimit = 20

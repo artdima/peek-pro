@@ -66,6 +66,15 @@ final class AppModel {
             guard let self, self.selectedSessionID == nil else { return }
             self.selectedSessionID = id
         }
+        if let remote {
+            // Real devices first; a mock session falls through to the mock loader.
+            let mockLoader = store.bodyLoader
+            store.bodyLoader = { [weak remote, weak store] key, id in
+                if remote?.sessions.loadBody(key, in: id) == true { return }
+                if let mockLoader { return mockLoader(key, id) }
+                store?.failBodyLoad(key, in: id, message: "The device isn't connected.")
+            }
+        }
     }
 
     func selectScenario(_ scenario: MockScenario) {
@@ -295,19 +304,14 @@ final class AppModel {
         case notInFile
     }
 
-    var remoteBodyAvailability: RemoteBodyAvailability {
-        guard let id = selectedSessionID else { return .notInFile }
+    func remoteBodyAvailability(in id: PeekSessionID?) -> RemoteBodyAvailability {
+        guard let id else { return .notInFile }
         if store.file(id) != nil { return .notInFile }
         return store.session(id)?.connection == .disconnected ? .offline : .available
     }
 
-    var selectedDeviceName: String {
-        selectedLiveSession?.title ?? "the device"
-    }
-
-    func loadBody(_ key: PeekBodyLoadKey) {
-        guard let id = selectedSessionID else { return }
-        store.loadBody(key, in: id)
+    func deviceName(in id: PeekSessionID?) -> String {
+        id.flatMap { store.session($0)?.title } ?? "the device"
     }
 
     func reveal(_ id: PeekId) {

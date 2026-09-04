@@ -15,6 +15,11 @@ extension PeekSessionID {
     }
 }
 
+extension EnvironmentValues {
+    /// The session a detached window shows; `nil` in the main window, which follows the selection.
+    @Entry var peekSessionID: PeekSessionID?
+}
+
 extension AppModel {
     func windowID(for entryID: PeekId) -> EntryWindowID? {
         selectedSessionID.map { EntryWindowID(session: $0.storageKey, entry: entryID.value) }
@@ -65,6 +70,7 @@ struct EntryWindow: View {
         Group {
             if let entry = model.entry(for: windowID) {
                 EntryDetailView(entry: entry, isStandalone: true)
+                    .environment(\.peekSessionID, model.session(for: windowID))
                     .navigationTitle(title(for: entry))
                     .navigationSubtitle(subtitle)
             } else {

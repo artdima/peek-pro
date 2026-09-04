@@ -47,17 +47,18 @@ struct UnavailableBodyView: View {
 /// A body that stayed on the device; loaded only when asked, so live traffic stays light.
 struct RemoteBodyView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.peekSessionID) private var windowSession
     let size: Int
     let contentType: PeekMediaType?
     let loadKey: PeekBodyLoadKey?
 
     var body: some View {
-        let state = loadKey.flatMap { model.store.bodyLoads[$0] }
-        switch (model.remoteBodyAvailability, state) {
+        let state = loadKey.flatMap { key in session.flatMap { model.store.bodyLoad(key, in: $0) } }
+        switch (model.remoteBodyAvailability(in: session), state) {
         case (_, .loading?):
             VStack(spacing: 10) {
                 ProgressView()
-                Text("Loading \(PeekFormat.bytes(size)) from \(model.selectedDeviceName)…")
+                Text("Loading \(PeekFormat.bytes(size)) from \(model.deviceName(in: session))…")
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -71,7 +72,7 @@ struct RemoteBodyView: View {
             ContentUnavailableView {
                 Label("Device Disconnected", systemImage: "bolt.horizontal.circle")
             } description: {
-                Text("The body stayed on \(model.selectedDeviceName). Reconnect the device to load it. \(facts)")
+                Text("The body stayed on \(model.deviceName(in: session)). Reconnect the device to load it. \(facts)")
             }
         case (.available, .failed(let message)?):
             ContentUnavailableView {
@@ -97,9 +98,14 @@ struct RemoteBodyView: View {
         [PeekFormat.bytes(size), contentType?.mimeType].compactMap(\.self).joined(separator: " · ")
     }
 
+    /// A request window names its own session; the main window shows the selected one.
+    private var session: PeekSessionID? {
+        windowSession ?? model.selectedSessionID
+    }
+
     private func load() {
-        guard let loadKey else { return }
-        model.loadBody(loadKey)
+        guard let loadKey, let session else { return }
+        model.store.loadBody(loadKey, in: session)
     }
 }
 

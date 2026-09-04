@@ -38,15 +38,15 @@ final class MockFeed {
     /// Pretends to fetch a body from the device; the map tile fails once so Retry can be seen.
     private func loadBody(_ key: PeekBodyLoadKey, in sessionID: PeekSessionID) {
         guard ownSessions.contains(sessionID) || hub.file(sessionID) != nil else {
-            hub.failBodyLoad(key, message: "Loading bodies from a device isn't supported yet.")
+            hub.failBodyLoad(key, in: sessionID, message: "The device isn't connected.")
             return
         }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
-            guard let self, self.hub.bodyLoads[key] == .loading else { return }
+            guard let self, self.hub.bodyLoad(key, in: sessionID) == .loading else { return }
             if key.entryID.value.hasSuffix("f25"), !self.failedLoads.contains(key) {
                 self.failedLoads.insert(key)
-                self.hub.failBodyLoad(key, message: "The device didn't answer within 10 seconds.")
+                self.hub.failBodyLoad(key, in: sessionID, message: "The device didn't answer within 10 seconds.")
                 return
             }
             guard key.side == .response,

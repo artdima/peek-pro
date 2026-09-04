@@ -8,6 +8,8 @@ final class PeekRemoteSessions {
 
     /// A connection that hasn't said `hello` by then is closed.
     var helloTimeout = Duration.seconds(10)
+    /// A body the device hasn't sent by then is given up on; Try Again asks anew.
+    var bodyTimeout = Duration.seconds(10)
     /// A session appeared, or came back.
     var onOpen: ((PeekSessionID) -> Void)?
 
@@ -15,6 +17,15 @@ final class PeekRemoteSessions {
     private let serverVersion: String?
     private var greeting: [ObjectIdentifier: PeekRemoteChannel] = [:]
     private var links: [String: Link] = [:]
+    /// Sessions this server opened, connected or not: the ones whose bodies it fetches.
+    private var known: Set<String> = []
+    private var bodyRequests: [String: BodyRequest] = [:]
+    private var lastRequestID = 0
+
+    private struct BodyRequest {
+        let session: String
+        let key: PeekBodyLoadKey
+    }
 
     private struct Link {
         let channel: PeekRemoteChannel
@@ -28,6 +39,27 @@ final class PeekRemoteSessions {
     }
 
     var connectedCount: Int { links.count }
+
+    /// `false` for a session some other source feeds.
+    func loadBody(_ key: PeekBodyLoadKey, in id: PeekSessionID) -> Bool {
+        guard case .live(let session) = id, known.contains(session) else { return false }
+        guard let channel = links[session]?.channel else {
+            hub.failBodyLoad(key, in: id, message: "The device is offline. Reconnect it to load the body.")
+            return true
+        }
+        lastRequestID += 1
+        let requestID = String(lastRequestID)
+        bodyRequests[requestID] = BodyRequest(session: session, key: key)
+        channel.send(PeekRemoteFrame.bodyRequest(requestID: requestID, entryID: key.entryID, side: key.side).text)
+
+        let timeout = bodyTimeout
+        Task { [weak self] in
+            try? await Task.sleep(for: timeout)
+            guard let self, self.bodyRequests.removeValue(forKey: requestID) != nil else { return }
+            self.hub.failBodyLoad(key, in: id, message: "The device didn't answer within \(timeout.seconds) seconds.")
+        }
+        return true
+    }
 
     func accept(_ channel: PeekRemoteChannel) {
         let id = ObjectIdentifier(channel)
@@ -79,6 +111,7 @@ final class PeekRemoteSessions {
             previous.close()
         }
         links[key] = Link(channel: channel)
+        known.insert(key)
         hub.connectSession(PeekLiveSession(
             key: key,
             info: hello.info,
@@ -91,6 +124,7 @@ final class PeekRemoteSessions {
         channel.onClose = { [weak self, weak channel] in
             guard let self, let channel, self.links[key]?.channel === channel else { return }
             self.links[key] = nil
+            self.failBodyRequests(in: key, message: "The device disconnected before sending the body.")
             self.hub.disconnect(.live(key))
         }
         onOpen?(.live(key))
@@ -106,7 +140,7 @@ final class PeekRemoteSessions {
                 links[key]?.history?.upsert(entry)
             } else if !hub.isPaused(id) || hub.entry(entry.id, in: id) != nil {
                 // Paused keeps new calls out, but those already shown still finish.
-                hub.upsert(CollectionOfOne(entry), in: id)
+                hub.upsertFromDevice(entry, in: id)
             }
         case .entryRemoved(let entryID):
             if inHistory { links[key]?.history?.remove(entryID) } else { hub.remove(entryID, in: id) }
@@ -120,8 +154,39 @@ final class PeekRemoteSessions {
             hub.addDropped(count, in: id)
         case .ping:
             links[key]?.channel.send(PeekRemoteFrame.pong.text)
+        case .bodyResponse(let requestID, let body):
+            guard let request = takeBodyRequest(requestID, from: key) else { return }
+            if case .remote = body {
+                hub.failBodyLoad(request.key, in: id, message: "The device sent the placeholder instead of the body.")
+            } else {
+                hub.completeBodyLoad(request.key, in: id, with: body)
+            }
+        case .bodyError(let requestID, let error, let message):
+            guard let request = takeBodyRequest(requestID, from: key) else { return }
+            hub.failBodyLoad(request.key, in: id, message: message ?? Self.describe(error))
         default:
             break
+        }
+    }
+
+    /// An answer counts only from the session that was asked, and only once.
+    private func takeBodyRequest(_ requestID: String, from session: String) -> BodyRequest? {
+        guard bodyRequests[requestID]?.session == session else { return nil }
+        return bodyRequests.removeValue(forKey: requestID)
+    }
+
+    private func failBodyRequests(in session: String, message: String) {
+        for (requestID, request) in bodyRequests where request.session == session {
+            bodyRequests[requestID] = nil
+            hub.failBodyLoad(request.key, in: .live(session), message: message)
+        }
+    }
+
+    private nonisolated static func describe(_ error: PeekRemoteBodyError) -> String {
+        switch error {
+        case .notFound: "The device no longer has this call."
+        case .notHeld: "The device didn't keep this body."
+        case .failed: "The device couldn't send the body."
         }
     }
 
@@ -140,4 +205,8 @@ final class PeekRemoteSessions {
             at: .now
         )
     }
+}
+
+private extension Duration {
+    nonisolated var seconds: Int { Int(components.seconds) }
 }

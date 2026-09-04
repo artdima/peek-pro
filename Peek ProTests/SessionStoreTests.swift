@@ -199,7 +199,7 @@ struct SessionHubTests {
         let hub = SessionHub()
         let key = PeekBodyLoadKey(entryID: PeekId("x"), side: .response)
         hub.loadBody(key, in: .live("nobody"))
-        #expect(hub.bodyLoads[key] == .failed("The device isn't connected."))
+        #expect(hub.bodyLoad(key, in: .live("nobody")) == .failed("The device isn't connected."))
     }
 
     @Test("puts a fetched body into the entry")
@@ -210,7 +210,7 @@ struct SessionHubTests {
         let key = PeekBodyLoadKey(entryID: PeekId("e1"), side: .response)
         hub.completeBodyLoad(key, in: loaded.file.id, with: .text("fetched"))
         #expect(hub.entry(PeekId("e1"), in: loaded.file.id)?.response?.body == .text("fetched"))
-        #expect(hub.bodyLoads[key] == nil)
+        #expect(hub.bodyLoad(key, in: loaded.file.id) == nil)
         #expect(hub.entry(PeekId("e1"), in: loaded.file.id)?.response?.statusCode == 200)
     }
 }
