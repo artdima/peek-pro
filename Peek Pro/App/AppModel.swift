@@ -94,7 +94,14 @@ final class AppModel {
         unseenBaseline = isFollowing ? nil : selectedEntries.count
     }
 
+    /// Real devices are closed and kept from coming back; mock ones are only marked.
+    func disconnect(_ id: PeekSessionID) {
+        if remote?.sessions.disconnect(id) != true { store.disconnect(id) }
+    }
+
     func removeSession(_ id: PeekSessionID) {
+        // Left connected, a removed session would keep receiving into a store nobody shows.
+        remote?.sessions.disconnect(id)
         store.removeSession(id)
         keepSelectionValid()
     }

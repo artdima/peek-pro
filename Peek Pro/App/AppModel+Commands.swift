@@ -42,7 +42,7 @@ extension AppModel {
 
     func disconnectSelectedSession() {
         guard let id = selectedSessionID else { return }
-        store.disconnect(id)
+        disconnect(id)
     }
 
     private func copy(_ text: String) {

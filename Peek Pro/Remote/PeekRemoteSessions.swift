@@ -10,6 +10,11 @@ final class PeekRemoteSessions {
     var helloTimeout = Duration.seconds(10)
     /// A body the device hasn't sent by then is given up on; Try Again asks anew.
     var bodyTimeout = Duration.seconds(10)
+    /// A device quiet this long gets a `ping`…
+    var heartbeatInterval = Duration.seconds(10)
+    /// …and one that stays silent this long after the `ping` is gone, even if the socket never said so
+    /// (Wi-Fi dropped, phone asleep). Measured from the ping, so a Mac waking from sleep asks before it drops anyone.
+    var answerLimit = Duration.seconds(20)
     /// A session appeared, or came back.
     var onOpen: ((PeekSessionID) -> Void)?
 
@@ -21,6 +26,9 @@ final class PeekRemoteSessions {
     private var known: Set<String> = []
     private var bodyRequests: [String: BodyRequest] = [:]
     private var lastRequestID = 0
+    /// Sessions disconnected here: the app would reconnect on its own, so it's turned away until it restarts.
+    private var blocked: Set<String> = []
+    private var heartbeat: Task<Void, Never>?
 
     private struct BodyRequest {
         let session: String
@@ -31,6 +39,9 @@ final class PeekRemoteSessions {
         let channel: PeekRemoteChannel
         /// The history until `synced`, shown in one go rather than call by call.
         var history: SessionStore? = SessionStore()
+        var lastHeard = ContinuousClock.now
+        /// The unanswered `ping`, if one is out.
+        var pingedAt: ContinuousClock.Instant?
     }
 
     init(hub: SessionHub, serverVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) {
@@ -39,6 +50,15 @@ final class PeekRemoteSessions {
     }
 
     var connectedCount: Int { links.count }
+
+    /// Closes the connection and turns the app away if it comes back; `false` if it isn't connected here.
+    @discardableResult
+    func disconnect(_ id: PeekSessionID) -> Bool {
+        guard case .live(let key) = id, let channel = links[key]?.channel else { return false }
+        blocked.insert(key)
+        channel.close()
+        return true
+    }
 
     /// `false` for a session some other source feeds.
     func loadBody(_ key: PeekBodyLoadKey, in id: PeekSessionID) -> Bool {
@@ -98,6 +118,13 @@ final class PeekRemoteSessions {
             hub.addRejected(rejection(of: hello, from: channel.address, denial))
             return
         }
+        if blocked.contains(hello.sessionID) {
+            channel.onText = nil
+            channel.onClose = nil
+            channel.send(PeekRemoteFrame.denied(.other, message: "Disconnected in Peek Pro. Restart the app to connect again.").text)
+            channel.close()
+            return
+        }
         channel.send(PeekRemoteFrame.welcome(serverName: Self.serverName, serverVersion: serverVersion).text)
         open(hello, on: channel)
     }
@@ -128,10 +155,14 @@ final class PeekRemoteSessions {
             self.hub.disconnect(.live(key))
         }
         onOpen?(.live(key))
+        startHeartbeat()
     }
 
     private func receive(_ text: String, in key: String) {
-        guard let frame = try? PeekRemoteFrame(text: text), links[key] != nil else { return }
+        guard links[key] != nil else { return }
+        links[key]?.lastHeard = .now
+        links[key]?.pingedAt = nil
+        guard let frame = try? PeekRemoteFrame(text: text) else { return }
         let id = PeekSessionID.live(key)
         let inHistory = links[key]?.history != nil
         switch frame {
@@ -167,6 +198,35 @@ final class PeekRemoteSessions {
         default:
             break
         }
+    }
+
+    private func startHeartbeat() {
+        guard heartbeat == nil else { return }
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let interval = self?.heartbeatInterval else { return }
+                try? await Task.sleep(for: interval / 2)
+                guard let self else { return }
+                if !self.beat() {
+                    self.heartbeat = nil
+                    return
+                }
+            }
+        }
+    }
+
+    /// Pings quiet devices and closes those that didn't answer; `false` once nobody is left to watch.
+    private func beat() -> Bool {
+        let now = ContinuousClock.now
+        for (key, link) in links {
+            if let pingedAt = link.pingedAt {
+                if now - pingedAt >= answerLimit { link.channel.close() }
+            } else if now - link.lastHeard >= heartbeatInterval {
+                links[key]?.pingedAt = now
+                link.channel.send(PeekRemoteFrame.ping.text)
+            }
+        }
+        return !links.isEmpty
     }
 
     /// An answer counts only from the session that was asked, and only once.

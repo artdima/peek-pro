@@ -68,7 +68,7 @@ struct SessionsPanel: View {
     @ViewBuilder
     private func liveSessionMenu(_ session: PeekLiveSession) -> some View {
         if session.connection != .disconnected {
-            Button("Disconnect") { store.disconnect(session.id) }
+            Button("Disconnect") { model.disconnect(session.id) }
         }
         Divider()
         Button("Remove from List", role: .destructive) { model.removeSession(session.id) }

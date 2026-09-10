@@ -12,7 +12,7 @@ struct InfoPanel: View {
                     if let session = model.store.session(id) {
                         InfoTable(title: "Connection", rows: connectionRows(session))
                         if session.connection != .disconnected {
-                            Button("Disconnect") { model.store.disconnect(id) }
+                            Button("Disconnect") { model.disconnect(id) }
                                 .padding(.top, 8)
                         }
                     }

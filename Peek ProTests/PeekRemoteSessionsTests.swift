@@ -15,9 +15,14 @@ final class FakeChannel: PeekRemoteChannel {
         self.address = address
     }
 
+    /// Answers `ping` the way `PeekRemote` does.
+    var answersPing = false
+
     func send(_ text: String) {
         guard !isClosed else { return }
-        sent.append((try? PeekRemoteFrame(text: text)) ?? .unknown(type: text))
+        let frame = (try? PeekRemoteFrame(text: text)) ?? .unknown(type: text)
+        sent.append(frame)
+        if answersPing, frame == .ping { onText?(PeekRemoteFrame.pong.text) }
     }
 
     func close() {
