@@ -187,6 +187,25 @@ The desktop makes up a token and shows it; the app is given it in code
 into a desktop that did not ask for it. It is not encryption: the connection
 is plain `ws://`, meant for a local network and a debug build.
 
+## Finding the desktop
+
+A desktop may advertise itself over Bonjour (DNS-SD), so that an app on the
+same network can offer it by name instead of asking for an address:
+
+- Service type **`_peek._tcp`**, in the `local.` domain.
+- The service name is the desktop as a person knows it — the computer's
+  name unless the person chose another. The network may rename it
+  (`MacBook Pro (2)`) when two desktops clash; the name the app sees is the
+  one to show.
+- The SRV record gives the host and port to connect to; the path is `/` as
+  always.
+- The TXT record has `protocolVersion`: the newest protocol the desktop
+  speaks, so an app can tell an old desktop apart before connecting.
+
+Advertising can be switched off, and many networks block multicast DNS, so
+an app always accepts an address typed in; discovery is a convenience on
+top. Browsing does not replace the token: the `hello` still carries it.
+
 ## Reference frames
 
 [`fixtures/remote/`](fixtures/remote/) holds one file per frame, each a single

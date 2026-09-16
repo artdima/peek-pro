@@ -99,6 +99,62 @@ struct PeekRemoteServerTests {
         #expect(server.connections.isEmpty)
     }
 
+    /// Unique, so a Peek Pro running on this Mac can't take the name first.
+    private func testName() -> String {
+        "Peek Pro Test \(UUID().uuidString.prefix(8))"
+    }
+
+    @Test("advertises over Bonjour under the name it was given")
+    func advertises() async {
+        let name = testName()
+        let server = PeekRemoteServer(port: freePort())
+        server.serviceName = name
+        var reported: [String?] = []
+        server.onServiceChange = { reported.append($0) }
+        server.start()
+        defer { server.stop() }
+        #expect(await eventually { server.registeredName == name })
+        #expect(reported == [name])
+    }
+
+    @Test("stays quiet without a name")
+    func quiet() async {
+        let server = PeekRemoteServer(port: freePort())
+        server.start()
+        defer { server.stop() }
+        #expect(await eventually { server.state == .listening })
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(server.registeredName == nil)
+    }
+
+    @Test("changes the name, and stops advertising, without a restart")
+    func renames() async {
+        let first = testName(), second = testName()
+        let server = PeekRemoteServer(port: freePort())
+        server.serviceName = first
+        server.start()
+        defer { server.stop() }
+        #expect(await eventually { server.registeredName == first })
+
+        server.serviceName = second
+        #expect(await eventually { server.registeredName == second })
+        #expect(server.state == .listening)
+
+        server.serviceName = nil
+        #expect(await eventually { server.registeredName == nil })
+        #expect(server.state == .listening)
+    }
+
+    @Test("forgets the registered name when stopped")
+    func stopsAdvertising() async {
+        let server = PeekRemoteServer(port: freePort())
+        server.serviceName = testName()
+        server.start()
+        #expect(await eventually { server.registeredName != nil })
+        server.stop()
+        #expect(server.registeredName == nil)
+    }
+
     @Test("lists local IPv4 addresses without loopback")
     func addresses() {
         let addresses = PeekRemoteServer.localAddresses()
@@ -116,6 +172,31 @@ struct PeekRemoteServerTests {
         #expect(address(.ipv6(IPv6Address("::ffff:192.168.1.5")!)) == "192.168.1.5")
         #expect(address(.ipv6(IPv6Address("fe80::1%lo0")!)) == "fe80::1")
         #expect(address(.name("iPhone.local", nil)) == "iPhone.local")
+    }
+}
+
+@MainActor
+@Suite("Bonjour name")
+struct BonjourNameTests {
+    @Test("is the Mac's name unless another was typed, and nothing when off")
+    func fromSettings() {
+        let mac = PeekServerState.defaultBonjourName
+        #expect(!mac.isEmpty)
+        #expect(PeekServerState.bonjourName(enabled: nil, custom: nil) == mac)
+        #expect(PeekServerState.bonjourName(enabled: true, custom: "") == mac)
+        #expect(PeekServerState.bonjourName(enabled: true, custom: "  ") == mac)
+        #expect(PeekServerState.bonjourName(enabled: true, custom: " Dev Mac ") == "Dev Mac")
+        #expect(PeekServerState.bonjourName(enabled: false, custom: "Dev Mac") == nil)
+    }
+
+    @Test("fits Bonjour's 63 bytes without cutting a character in half")
+    func limit() {
+        let long = String(repeating: "é", count: 40)
+        let fitted = PeekServerState.fitBonjour(long)
+        #expect(fitted.utf8.count == 62)
+        #expect(fitted.count == 31)
+        #expect(PeekServerState.fitBonjour("MacBook Pro") == "MacBook Pro")
+        #expect(PeekServerState.bonjourName(enabled: true, custom: long)?.utf8.count == 62)
     }
 }
 

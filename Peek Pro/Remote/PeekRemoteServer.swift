@@ -13,13 +13,23 @@ final class PeekRemoteServer {
 
     /// Whole bodies come back on request, so a frame can be as big as a downloaded file.
     nonisolated static let maximumMessageSize = 64 << 20
+    nonisolated static let serviceType = "_peek._tcp"
 
     private(set) var port: Int
     private(set) var state = State.idle {
         didSet { if state != oldValue { onStateChange?(state) } }
     }
     private(set) var connections: [UUID: PeekRemoteConnection] = [:]
+    /// The Bonjour name to advertise under; `nil` keeps quiet. Changes take effect on a running listener too.
+    var serviceName: String? {
+        didSet { if serviceName != oldValue { listener?.service = service } }
+    }
+    /// The name the network took — it may differ from `serviceName` when another desktop already has it.
+    private(set) var registeredName: String? {
+        didSet { if registeredName != oldValue { onServiceChange?(registeredName) } }
+    }
     var onStateChange: ((State) -> Void)?
+    var onServiceChange: ((String?) -> Void)?
     var onConnection: ((PeekRemoteConnection) -> Void)?
 
     private var listener: NWListener?
@@ -50,6 +60,13 @@ final class PeekRemoteServer {
             return
         }
         self.listener = listener
+        listener.service = service
+        listener.serviceRegistrationUpdateHandler = { [weak self, weak listener] change in
+            MainActor.assumeIsolated {
+                guard let self, let listener, listener === self.listener else { return }
+                self.serviceChanged(change)
+            }
+        }
         listener.stateUpdateHandler = { [weak self, weak listener] update in
             MainActor.assumeIsolated {
                 guard let self, let listener, listener === self.listener else { return }
@@ -71,12 +88,30 @@ final class PeekRemoteServer {
         listener = nil
         for connection in connections.values { connection.close() }
         connections = [:]
+        registeredName = nil
         state = .idle
     }
 
     func restart(on port: Int) {
         self.port = port
         start()
+    }
+
+    private var service: NWListener.Service? {
+        serviceName.map {
+            NWListener.Service(name: $0, type: Self.serviceType, txtRecord: NWTXTRecord(["protocolVersion": String(PeekRemoteProtocol.version)]))
+        }
+    }
+
+    private func serviceChanged(_ change: NWListener.ServiceRegistrationChange) {
+        switch change {
+        case .add(let endpoint):
+            if case .service(let name, _, _, _) = endpoint { registeredName = name }
+        case .remove:
+            registeredName = nil
+        @unknown default:
+            break
+        }
     }
 
     private func listenerChanged(_ update: NWListener.State) {
@@ -86,6 +121,7 @@ final class PeekRemoteServer {
         case .waiting(let error), .failed(let error):
             listener?.cancel()
             listener = nil
+            registeredName = nil
             state = Self.state(for: error)
         case .setup, .cancelled:
             break

@@ -15,6 +15,7 @@ final class PeekRemoteHost {
     init(hub: SessionHub) {
         self.hub = hub
         server = PeekRemoteServer(port: hub.server.port)
+        server.serviceName = PeekServerState.bonjourNameFromSettings
         let sessions = PeekRemoteSessions(hub: hub)
         self.sessions = sessions
         server.onConnection = { sessions.accept($0) }
@@ -22,6 +23,7 @@ final class PeekRemoteHost {
             self?.publish()
             self?.retryIfNeeded()
         }
+        server.onServiceChange = { [weak self] _ in self?.publish() }
     }
 
     func start() {
@@ -33,8 +35,9 @@ final class PeekRemoteHost {
         pathMonitor.start(queue: .main)
     }
 
-    /// After Settings changed the port.
+    /// After Settings changed the port or the Bonjour name; only a new port drops the devices.
     func applySettings() {
+        server.serviceName = PeekServerState.bonjourNameFromSettings
         guard hub.server.port != server.port else { return }
         server.restart(on: hub.server.port)
     }
@@ -45,6 +48,7 @@ final class PeekRemoteHost {
         state.port = server.port
         state.status = server.state == .listening || server.state == .idle ? .listening : .portInUse
         state.addresses = PeekRemoteServer.localAddresses()
+        state.bonjourName = server.registeredName
         hub.setServer(state)
     }
 

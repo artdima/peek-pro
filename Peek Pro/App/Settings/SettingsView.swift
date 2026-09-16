@@ -81,9 +81,12 @@ private struct ConnectionSettings: View {
             Section {
                 Toggle("Advertise on the local network", isOn: $bonjourEnabled)
                     .onChange(of: bonjourEnabled) { model.applyServerSettings() }
-                TextField("Name", text: $bonjourName, prompt: Text(FixtureSessions.server.bonjourName ?? "Peek Pro"))
+                TextField("Name", text: $bonjourName, prompt: Text(PeekServerState.defaultBonjourName))
                     .disabled(!bonjourEnabled)
                     .onSubmit { model.applyServerSettings() }
+                if let name = server.bonjourName {
+                    LabeledContent("Advertised as", value: name)
+                }
             } header: {
                 Text("Bonjour")
             } footer: {

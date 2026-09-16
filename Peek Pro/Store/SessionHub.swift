@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SystemConfiguration
 
 /// Every source the window shows: live devices, `.peek` files, and the server they connect to.
 /// Screens read it and act through it; what feeds it — the mock scenarios now, the WebSocket server
@@ -134,16 +135,11 @@ final class SessionHub {
         bodyLoader(key, id)
     }
 
-    /// Port and Bonjour name from Settings.
+    /// Port and Bonjour name from Settings; the real server then reports the name the network took.
     func applyServerSettings() {
-        let defaults = UserDefaults.standard
-        let port = defaults.integer(forKey: SettingsKey.port)
+        let port = UserDefaults.standard.integer(forKey: SettingsKey.port)
         if port > 0 { server.port = port }
-        if defaults.object(forKey: SettingsKey.bonjourEnabled) as? Bool == false {
-            server.bonjourName = nil
-        } else if let name = defaults.string(forKey: SettingsKey.bonjourName), !name.isEmpty {
-            server.bonjourName = name
-        }
+        server.bonjourName = PeekServerState.bonjourNameFromSettings
     }
 
     func regenerateToken() {
@@ -272,6 +268,38 @@ final class SessionHub {
 
 extension PeekServerState {
     nonisolated static let defaultPort = 9741
+
+    /// Bonjour allows 63 bytes of UTF-8 for a service name.
+    nonisolated static let bonjourNameLimit = 63
+
+    /// The Bonjour name Settings ask for: the Mac's name unless another was typed, `nil` when advertising is off.
+    static var bonjourNameFromSettings: String? {
+        let defaults = UserDefaults.standard
+        return bonjourName(enabled: defaults.object(forKey: SettingsKey.bonjourEnabled) as? Bool,
+                           custom: defaults.string(forKey: SettingsKey.bonjourName))
+    }
+
+    nonisolated static func bonjourName(enabled: Bool?, custom: String?) -> String? {
+        guard enabled != false else { return nil }
+        let name = custom?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return fitBonjour(name.isEmpty ? defaultBonjourName : name)
+    }
+
+    /// Cuts to the limit between characters, never inside one.
+    nonisolated static func fitBonjour(_ name: String) -> String {
+        var result = ""
+        for character in name {
+            guard result.utf8.count + character.utf8.count <= bonjourNameLimit else { break }
+            result.append(character)
+        }
+        return result
+    }
+
+    /// What the Mac is called in System Settings, as AirDrop and Screen Sharing name it.
+    nonisolated static var defaultBonjourName: String {
+        if let name = SCDynamicStoreCopyComputerName(nil, nil) as String?, !name.isEmpty { return name }
+        return Host.current().localizedName ?? "Peek Pro"
+    }
 
     /// Three groups of four, without look-alike characters, so it can be read out and typed.
     nonisolated static func newToken() -> String {
