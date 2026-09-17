@@ -84,6 +84,11 @@ final class AppModel {
         markAllSeen()
     }
 
+    /// A new pairing code; the real server also forgets the wrong tries against the old one.
+    func newPairingCode() {
+        if let remote { remote.sessions.rotateCode() } else { store.rotatePairingCode() }
+    }
+
     /// After Settings changed the port or the Bonjour name.
     func applyServerSettings() {
         store.applyServerSettings()

@@ -54,7 +54,7 @@ struct PeekRemoteSessionsTests {
     ))
 
     private func sessions() -> PeekRemoteSessions {
-        PeekRemoteSessions(hub: hub, serverVersion: "1.0")
+        PeekRemoteSessions(hub: hub, serverVersion: "1.0", serverID: "mac-1")
     }
 
     private func hello(
@@ -87,7 +87,7 @@ struct PeekRemoteSessionsTests {
         remote.accept(channel)
         channel.receive(hello())
 
-        #expect(channel.sent == [.welcome(serverName: "Peek Pro", serverVersion: "1.0")])
+        #expect(channel.sent == [.welcome(serverName: "Peek Pro", serverVersion: "1.0", serverID: "mac-1")])
         #expect(!channel.isClosed)
         let session = try #require(hub.sessions.first)
         #expect(hub.sessions.count == 1)

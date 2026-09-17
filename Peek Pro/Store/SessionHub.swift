@@ -11,6 +11,8 @@ final class SessionHub {
     private(set) var sessions: [PeekLiveSession] = []
     private(set) var files: [PeekSessionFile] = []
     private(set) var rejected: [PeekRejectedConnection] = []
+    /// Devices that paired with a code, newest last; their tokens are the server's to keep.
+    private(set) var pairedDevices: [PeekPairedDevice] = []
     private(set) var paused: Set<PeekSessionID> = []
     private var bodyLoads: [PeekSessionID: [PeekBodyLoadKey: PeekBodyLoadState]] = [:]
     private var stores: [PeekSessionID: SessionStore] = [:]
@@ -145,6 +147,26 @@ final class SessionHub {
     func regenerateToken() {
         server.token = PeekServerState.newToken()
         applyTokenPolicy()
+    }
+
+    /// A new code; the old one is refused from now on.
+    func rotatePairingCode(lifetime: TimeInterval = PeekPairingCode.defaultLifetime) {
+        server.pairingCode = .random(lifetime: lifetime)
+    }
+
+    func addPairedDevice(_ device: PeekPairedDevice) {
+        pairedDevices.removeAll { $0.id == device.id }
+        pairedDevices.append(device)
+    }
+
+    func touchPairedDevice(_ id: String, address: String, at date: Date = .now) {
+        guard let index = pairedDevices.firstIndex(where: { $0.id == id }) else { return }
+        pairedDevices[index].address = address
+        pairedDevices[index].lastSeenAt = date
+    }
+
+    func removePairedDevice(_ id: String) {
+        pairedDevices.removeAll { $0.id == id }
     }
 
     /// Remembers the token while the policy keeps it, and forgets it otherwise.

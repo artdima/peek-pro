@@ -81,7 +81,8 @@ side to update. The version goes up only when an older peer would
 | Key | Type | Required | Meaning |
 |---|---|---|---|
 | `protocolVersion` | integer | yes | The protocol the app speaks. |
-| `token` | string | no | The token the desktop shows, as the app was given it. Absent when the app was given none. |
+| `token` | string | no | The token the desktop shows, as the app was given it, or the `deviceToken` a desktop issued to this device (see [Pairing](#pairing-with-a-code)). Absent when the app has neither. |
+| `code` | string | no | The pairing code the desktop shows, typed by a person. Sent instead of `token`, and only until the desktop answers with a `deviceToken`. |
 | `sessionId` | string | yes | Stays the same while the app runs, across reconnections. |
 | `session` | object | yes | The app, as the header of a `.peek` file describes it: `peekVersion`, `name`, `platform`, `osVersion`, `startedAt`, with the same rules. `format` and `formatVersion` are not part of it. |
 
@@ -90,17 +91,18 @@ side to update. The version goes up only when an older peer would
 | Key | Type | Required | Meaning |
 |---|---|---|---|
 | `protocolVersion` | integer | yes | The protocol the desktop speaks. |
-| `server` | object | no | `name` and `version` of the desktop, both strings, both optional. |
+| `server` | object | no | `name` and `version` of the desktop, and its `id` — a string that stays the same across launches, so the app knows whose `deviceToken` it holds. All strings, all optional. |
+| `deviceToken` | string | no | Issued when the `hello` carried a right `code`: the token this device sends from now on, in `token`. |
 
 ### `denied` — desktop → app
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `reason` | string | yes | `token` — missing or wrong; `protocolVersion` — the desktop does not speak the app's version; `other`. Unknown values read as `other`. |
+| `reason` | string | yes | `token` — missing or wrong; `code` — the pairing code is wrong or has expired; `protocolVersion` — the desktop does not speak the app's version; `other`. Unknown values read as `other`. |
 | `message` | string | yes | Why, for a person to read in the app's log. |
 
-The desktop compares tokens in constant time and closes the connection after
-sending this frame.
+The desktop compares tokens and codes in constant time and closes the
+connection after sending this frame.
 
 ### `entry` — app → desktop
 
@@ -187,6 +189,29 @@ The desktop makes up a token and shows it; the app is given it in code
 into a desktop that did not ask for it. It is not encryption: the connection
 is plain `ws://`, meant for a local network and a debug build.
 
+## Pairing with a code
+
+Typing a long token into code is fine for a script; a person at a phone is
+better served by a short code. The desktop shows one — **four digits** — and
+the app sends it in `hello.code`, with no `token`:
+
+1. The desktop checks the version, then the code. A right code is answered
+   with `welcome` carrying a fresh **`deviceToken`** — long and random — and
+   `server.id`; a wrong or expired one with `denied` / `code`.
+2. The app keeps the `deviceToken` (with the `server.id` it came from) and
+   sends it as `token` on every connection from then on, never the code
+   again. The desktop accepts it like the token it shows.
+3. A desktop that has forgotten the device answers `denied` / `token`; the
+   app drops the token and asks the person for a new code.
+
+A four-digit code is not a secret that lasts: it is a one-time pairing, the
+way a TV pairs a remote. The desktop keeps it short-lived — a few minutes,
+then a new one — makes it **expire on success** and **after a handful of
+wrong tries** (five is plenty; a new code appears), and compares it in
+constant time. Which devices it remembers, and for how long, is the
+desktop's to decide and to show. A desktop that does not pair may ignore
+`code`; the app then sees `denied` / `token`.
+
 ## Finding the desktop
 
 A desktop may advertise itself over Bonjour (DNS-SD), so that an app on the
@@ -218,7 +243,9 @@ reader must ignore it (`ignored`), and which file it must read the same as
 | File | What it shows |
 |---|---|
 | `hello.json` | An app with a name, an OS version and a token. |
+| `hello-code.json` | The same app pairing with a code instead. |
 | `welcome.json`, `denied.json` | The two answers. |
+| `welcome-paired.json`, `denied-code.json` | The answers to a code: a `deviceToken` with the desktop's `id`, or a refusal. |
 | `entry-add.json`, `entry-update.json`, `entry-remove.json` | A call as it starts — its request body held back — as it completes, and as it goes. |
 | `cleared.json`, `synced.json`, `dropped.json` | The frames without an entry. |
 | `body-request.json`, `body-response.json`, `body-error.json` | A body asked for, sent, and refused. |

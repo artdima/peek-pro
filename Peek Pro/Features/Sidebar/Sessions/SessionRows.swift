@@ -218,6 +218,7 @@ extension PeekRejectedConnection.Reason {
     var title: String {
         switch self {
         case .invalidToken: "Wrong token"
+        case .wrongCode: "Wrong code"
         case .unsupportedProtocol(let version): "Protocol v\(version) is not supported"
         }
     }
@@ -227,6 +228,8 @@ extension PeekRejectedConnection.Reason {
         switch self {
         case .invalidToken:
             "The app sent an old or mistyped token. Copy the current token into the app's PeekRemote setup and restart it."
+        case .wrongCode:
+            "The code was mistyped or had already changed. Enter the code shown now."
         case .unsupportedProtocol(let version):
             "The app speaks peek_remote protocol v\(version), newer than this Peek Pro understands. Update Peek Pro."
         }

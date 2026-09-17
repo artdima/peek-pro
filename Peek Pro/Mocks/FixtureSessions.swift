@@ -8,7 +8,8 @@ enum FixtureSessions {
         port: 9741,
         addresses: ["192.168.1.10", "MacBook-Pro.local"],
         bonjourName: "Peek Pro on MacBook Pro",
-        token: "k7q4-mx2p-9vd3"
+        token: "k7q4-mx2p-9vd3",
+        pairingCode: PeekPairingCode(digits: "4719", issuedAt: .now, expiresAt: .now.addingTimeInterval(PeekPairingCode.defaultLifetime))
     )
 
     static func info(_ name: String?, _ platform: PeekPlatform, _ osVersion: String? = nil, startedAt: Date) -> PeekSessionInfo {
@@ -114,6 +115,14 @@ enum FixtureSessions {
             platform: .iOS,
             reason: .unsupportedProtocol(version: 3),
             at: Fixtures.start.addingTimeInterval(-15)
+        ),
+        PeekRejectedConnection(
+            id: "r3",
+            address: "192.168.1.62",
+            name: "Acme Shop",
+            platform: .iOS,
+            reason: .wrongCode,
+            at: Fixtures.start.addingTimeInterval(-5)
         ),
     ]
 

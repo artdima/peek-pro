@@ -35,7 +35,7 @@ struct PeekRemoteDisconnectTests {
 
     @Test("keeps a session the device left readable and savable")
     func keepsSession() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let channel = connect(remote)
         channel.close()
 
@@ -49,7 +49,7 @@ struct PeekRemoteDisconnectTests {
 
     @Test("closes a device disconnected here and turns it away when it comes back")
     func disconnectHere() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let channel = connect(remote)
         #expect(remote.disconnect(id))
         #expect(channel.isClosed)
@@ -75,7 +75,7 @@ struct PeekRemoteDisconnectTests {
 
     @Test("has nothing to disconnect for a session it doesn't hold")
     func nothingToDisconnect() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         #expect(!remote.disconnect(.live("iphone")))
         let channel = connect(remote)
         channel.close()
@@ -94,7 +94,7 @@ struct PeekRemoteDisconnectTests {
 
     @Test("pings a quiet device and drops one that doesn't answer")
     func dropsSilent() async {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         remote.heartbeatInterval = .milliseconds(50)
         remote.answerLimit = .milliseconds(100)
         let silent = connect(remote)
@@ -111,7 +111,7 @@ struct PeekRemoteDisconnectTests {
 
     @Test("counts any frame as an answer")
     func anyFrameCounts() async {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         remote.heartbeatInterval = .milliseconds(50)
         remote.answerLimit = .seconds(1)
         let channel = connect(remote)

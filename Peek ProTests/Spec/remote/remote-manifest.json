@@ -3,11 +3,23 @@
     "type": "hello",
     "direction": "toDesktop"
   },
+  "hello-code.json": {
+    "type": "hello",
+    "direction": "toDesktop"
+  },
   "welcome.json": {
     "type": "welcome",
     "direction": "toApp"
   },
+  "welcome-paired.json": {
+    "type": "welcome",
+    "direction": "toApp"
+  },
   "denied.json": {
+    "type": "denied",
+    "direction": "toApp"
+  },
+  "denied-code.json": {
     "type": "denied",
     "direction": "toApp"
   },

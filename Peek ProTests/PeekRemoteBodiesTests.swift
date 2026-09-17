@@ -56,7 +56,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("asks the device and puts the body in place")
     func loads() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let channel = connect(remote)
         hub.loadBody(key, in: id)
@@ -72,7 +72,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("asks once while a load is under way")
     func onceAtATime() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let channel = connect(remote)
         hub.loadBody(key, in: id)
@@ -82,7 +82,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("shows why the device had no body, and asks again on Try Again")
     func error() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let channel = connect(remote)
         hub.loadBody(key, in: id)
@@ -99,7 +99,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("gives up when the device doesn't answer, and ignores a late answer")
     func timeout() async throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         remote.bodyTimeout = .milliseconds(30)
         loader(remote)
         let channel = connect(remote)
@@ -119,7 +119,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("fails what's in flight when the device goes, and says it's offline after")
     func offline() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let channel = connect(remote)
         hub.loadBody(key, in: id)
@@ -131,7 +131,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("takes an answer only from the device that was asked")
     func otherDevice() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let asked = connect(remote)
         let other = connect(remote, session: "other")
@@ -143,7 +143,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("leaves sessions it didn't open to another loader")
     func notOurs() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         hub.loadBody(key, in: .live("iphone"))
         #expect(hub.bodyLoad(key, in: .live("iphone")) == .failed("not ours"))
@@ -151,7 +151,7 @@ struct PeekRemoteBodiesTests {
 
     @Test("keeps a fetched body when the device sends the call again")
     func keepsLoaded() throws {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         loader(remote)
         let channel = connect(remote)
         hub.loadBody(key, in: id)

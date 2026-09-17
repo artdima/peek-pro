@@ -39,7 +39,7 @@ struct PeekRemoteStreamTests {
 
     @Test("shows the history only once it's complete")
     func historyInOneGo() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let history = Array(Fixtures.session.prefix(5))
         let channel = connect(remote, history: history, synced: false)
         #expect(hub.entries(in: id).isEmpty)
@@ -53,7 +53,7 @@ struct PeekRemoteStreamTests {
     @Test("reads a whole spec session sent frame by frame")
     func specSession() throws {
         let loaded = try PeekFileLoader.load(try Spec.url("basic.peek"))
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         // Through text, as the socket would carry it.
         let channel = FakeChannel()
         remote.accept(channel)
@@ -65,7 +65,7 @@ struct PeekRemoteStreamTests {
 
     @Test("applies updates, removals and clears inside the history")
     func historyChanges() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let a = Fixtures.entry("f01"), b = Fixtures.entry("f02"), c = Fixtures.entry("f03")
         let channel = connect(remote, history: [a, b], synced: false)
         channel.receive(.cleared)
@@ -79,7 +79,7 @@ struct PeekRemoteStreamTests {
 
     @Test("streams live changes after the history")
     func live() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let template = Fixtures.entry("f02")
         let pending = template.restarted(id: PeekId("n1"), at: .now)
         let channel = connect(remote, history: [Fixtures.entry("f01")])
@@ -100,7 +100,7 @@ struct PeekRemoteStreamTests {
 
     @Test("treats add for a held id as update, and update for an unknown id as add")
     func lenientOps() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let template = Fixtures.entry("f02")
         let pending = template.restarted(id: PeekId("n1"), at: .now)
         let channel = connect(remote, history: [pending])
@@ -113,7 +113,7 @@ struct PeekRemoteStreamTests {
 
     @Test("keeps new calls out while paused, but lets shown ones finish")
     func paused() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let template = Fixtures.entry("f02")
         let pending = template.restarted(id: PeekId("n1"), at: .now)
         let channel = connect(remote, history: [pending])
@@ -126,7 +126,7 @@ struct PeekRemoteStreamTests {
 
     @Test("adds up dropped frames")
     func dropped() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let channel = connect(remote)
         channel.receive(.dropped(count: 3))
         channel.receive(.dropped(count: 4))
@@ -135,7 +135,7 @@ struct PeekRemoteStreamTests {
 
     @Test("answers ping with pong, in the history too")
     func ping() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let channel = connect(remote, synced: false)
         channel.receive(.ping)
         channel.receive(.synced(count: 0))
@@ -145,7 +145,7 @@ struct PeekRemoteStreamTests {
 
     @Test("keeps what it showed until the reconnected app's history is complete")
     func reconnect() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let first = connect(remote, history: [Fixtures.entry("f01"), Fixtures.entry("f02")])
         hub.setPinned([PeekId("f01")], to: true, in: id)
         channel(first, drops: 2)
@@ -162,7 +162,7 @@ struct PeekRemoteStreamTests {
 
     @Test("forgets a history cut short by a disconnect")
     func cutShort() {
-        let remote = PeekRemoteSessions(hub: hub)
+        let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")
         let channel = connect(remote, history: [Fixtures.entry("f01")], synced: false)
         channel.close()
         channel.receive(.synced(count: 1))

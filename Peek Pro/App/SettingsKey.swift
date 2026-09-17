@@ -5,6 +5,8 @@ enum SettingsKey {
     static let tokenPolicy = "server.tokenPolicy"
     /// Kept only while the policy is `.persistent`.
     static let token = "server.token"
+    /// Made once; devices keep their token under it.
+    static let serverID = "server.id"
     static let bonjourEnabled = "server.bonjourEnabled"
     static let bonjourName = "server.bonjourName"
     static let bodyFontSize = "body.fontSize"

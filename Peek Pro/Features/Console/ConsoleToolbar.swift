@@ -188,27 +188,10 @@ private struct ConnectionPopover: View {
                         CopyButton(text: "\(address):\(server.port)")
                     }
                 }
-                GridRow {
-                    Text("Token")
-                        .foregroundStyle(.secondary)
-                    Text(server.token)
-                        .font(.body.monospaced())
-                        .textSelection(.enabled)
-                    HStack(spacing: 2) {
-                        CopyButton(text: server.token)
-                        Button {
-                            model.store.regenerateToken()
-                        } label: {
-                            Label("New Token", systemImage: "arrow.clockwise")
-                        }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .help("New token — devices with the old one are refused")
-                    }
-                }
             }
+            PairingCodeView(code: server.pairingCode, isLarge: false) { model.newPairingCode() }
             HStack(alignment: .firstTextBaseline) {
-                Text("Devices connect with this address and token.")
+                Text("Devices connect with this address and code.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

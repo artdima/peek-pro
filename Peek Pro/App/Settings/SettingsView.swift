@@ -58,6 +58,10 @@ private struct ConnectionSettings: View {
             }
 
             Section {
+                LabeledContent("Pairing code") {
+                    PairingCodeView(code: server.pairingCode, isLarge: false) { model.newPairingCode() }
+                        .frame(maxWidth: 260)
+                }
                 Picker("Token", selection: $tokenPolicy) {
                     ForEach(TokenPolicy.allCases) { Text($0.title).tag($0) }
                 }
@@ -74,7 +78,7 @@ private struct ConnectionSettings: View {
             } header: {
                 Text("Access")
             } footer: {
-                Text("A device must send this token to connect. A new token refuses devices that still use the old one.")
+                Text("A person types the code into the app once; the token is for apps that have it written in code, such as in CI. A new token refuses apps that still use the old one.")
                     .foregroundStyle(.secondary)
             }
 

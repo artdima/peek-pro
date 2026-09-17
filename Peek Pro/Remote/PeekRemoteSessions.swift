@@ -18,8 +18,20 @@ final class PeekRemoteSessions {
     /// A session appeared, or came back.
     var onOpen: ((PeekSessionID) -> Void)?
 
+    /// How long a pairing code stays good; a new one takes over when it runs out.
+    var codeLifetime = PeekPairingCode.defaultLifetime {
+        didSet { rotateCode() }
+    }
+    /// Wrong codes before the code changes, so a guess can't work through all ten thousand.
+    var codeFailureLimit = 5
+
+    /// Tells this desktop from others across launches, so a device knows whose token it holds.
+    let serverID: String
+    let deviceTokens: PeekDeviceTokens
     private let hub: SessionHub
     private let serverVersion: String?
+    private var codeFailures = 0
+    private var codeExpiry: Task<Void, Never>?
     private var greeting: [ObjectIdentifier: PeekRemoteChannel] = [:]
     private var links: [String: Link] = [:]
     /// Sessions this server opened, connected or not: the ones whose bodies it fetches.
@@ -37,6 +49,8 @@ final class PeekRemoteSessions {
 
     private struct Link {
         let channel: PeekRemoteChannel
+        /// The paired device behind the connection, when it came with a device token.
+        var deviceID: String?
         /// The history until `synced`, shown in one go rather than call by call.
         var history: SessionStore? = SessionStore()
         var lastHeard = ContinuousClock.now
@@ -44,9 +58,47 @@ final class PeekRemoteSessions {
         var pingedAt: ContinuousClock.Instant?
     }
 
-    init(hub: SessionHub, serverVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) {
+    init(
+        hub: SessionHub,
+        serverVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+        serverID: String = PeekRemoteSessions.storedServerID(),
+        deviceTokens: PeekDeviceTokens = InMemoryDeviceTokens()
+    ) {
         self.hub = hub
         self.serverVersion = serverVersion
+        self.serverID = serverID
+        self.deviceTokens = deviceTokens
+        rotateCode()
+    }
+
+    /// Made once and kept in the defaults, so a device's token survives a relaunch.
+    static func storedServerID() -> String {
+        let defaults = UserDefaults.standard
+        if let id = defaults.string(forKey: SettingsKey.serverID), !id.isEmpty { return id }
+        let id = UUID().uuidString.lowercased()
+        defaults.set(id, forKey: SettingsKey.serverID)
+        return id
+    }
+
+    /// A fresh code, now: after a pairing, too many wrong tries, the old one running out, or a click.
+    func rotateCode() {
+        hub.rotatePairingCode(lifetime: codeLifetime)
+        codeFailures = 0
+        codeExpiry?.cancel()
+        let lifetime = codeLifetime
+        codeExpiry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(lifetime))
+            guard !Task.isCancelled, let self else { return }
+            self.rotateCode()
+        }
+    }
+
+    /// Forgets the device's token and closes its session: when the app comes back with the old token it is
+    /// turned away with `denied(token)`, which is what makes it ask for a code again.
+    func forgetDevice(_ id: String) {
+        deviceTokens.remove(deviceID: id)
+        hub.removePairedDevice(id)
+        for link in links.values where link.deviceID == id { link.channel.close() }
     }
 
     var connectedCount: Int { links.count }
@@ -104,9 +156,13 @@ final class PeekRemoteSessions {
         guard case .hello(let hello)? = try? PeekRemoteFrame(text: text) else { return }
         greeting[ObjectIdentifier(channel)] = nil
 
+        // A code that ran out before the timer noticed is as good as a wrong one.
+        if hello.code != nil, hub.server.pairingCode.isExpired() { rotateCode() }
         let check = PeekRemoteProtocol.check(
             hello,
             token: hub.server.token,
+            code: hub.server.pairingCode.digits,
+            deviceTokens: deviceTokens.all.keys,
             oldest: Self.oldestProtocol,
             newest: Self.newestProtocol
         )
@@ -116,6 +172,10 @@ final class PeekRemoteSessions {
             channel.send(denial.text)
             channel.close()
             hub.addRejected(rejection(of: hello, from: channel.address, denial))
+            if case .denied(.code, _) = denial {
+                codeFailures += 1
+                if codeFailures >= codeFailureLimit { rotateCode() }
+            }
             return
         }
         if blocked.contains(hello.sessionID) {
@@ -125,11 +185,43 @@ final class PeekRemoteSessions {
             channel.close()
             return
         }
-        channel.send(PeekRemoteFrame.welcome(serverName: Self.serverName, serverVersion: serverVersion).text)
-        open(hello, on: channel)
+        var deviceID = hello.token.flatMap { deviceTokens.all[$0] }
+        var issued: String?
+        if hello.code != nil {
+            // The code is spent; from now on the device carries a token of its own.
+            let token = Self.newDeviceToken()
+            let id = UUID().uuidString.lowercased()
+            deviceTokens.add(token, for: id)
+            hub.addPairedDevice(PeekPairedDevice(
+                id: id,
+                name: hello.info.name,
+                platform: hello.info.platform,
+                address: channel.address,
+                pairedAt: .now,
+                lastSeenAt: .now
+            ))
+            deviceID = id
+            issued = token
+            rotateCode()
+        } else if let deviceID {
+            hub.touchPairedDevice(deviceID, address: channel.address)
+        }
+        channel.send(PeekRemoteFrame.welcome(
+            serverName: Self.serverName,
+            serverVersion: serverVersion,
+            serverID: serverID,
+            deviceToken: issued
+        ).text)
+        open(hello, on: channel, deviceID: deviceID)
     }
 
-    private func open(_ hello: PeekRemoteHello, on channel: PeekRemoteChannel) {
+    /// 32 random bytes as hex; long enough that guessing is not a plan.
+    private nonisolated static func newDeviceToken() -> String {
+        var generator = SystemRandomNumberGenerator()
+        return (0..<32).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max, using: &generator)) }.joined()
+    }
+
+    private func open(_ hello: PeekRemoteHello, on channel: PeekRemoteChannel, deviceID: String?) {
         let key = hello.sessionID
         // The app came back before the old socket noticed it was gone.
         if let previous = links[key]?.channel, previous !== channel {
@@ -137,7 +229,7 @@ final class PeekRemoteSessions {
             previous.onClose = nil
             previous.close()
         }
-        links[key] = Link(channel: channel)
+        links[key] = Link(channel: channel, deviceID: deviceID)
         known.insert(key)
         hub.connectSession(PeekLiveSession(
             key: key,
@@ -251,10 +343,10 @@ final class PeekRemoteSessions {
     }
 
     private func rejection(of hello: PeekRemoteHello, from address: String, _ denial: PeekRemoteFrame) -> PeekRejectedConnection {
-        let reason: PeekRejectedConnection.Reason = if case .denied(.protocolVersion, _) = denial {
-            .unsupportedProtocol(version: hello.protocolVersion)
-        } else {
-            .invalidToken
+        let reason: PeekRejectedConnection.Reason = switch denial {
+        case .denied(.protocolVersion, _): .unsupportedProtocol(version: hello.protocolVersion)
+        case .denied(.code, _): .wrongCode
+        default: .invalidToken
         }
         return PeekRejectedConnection(
             id: UUID().uuidString,

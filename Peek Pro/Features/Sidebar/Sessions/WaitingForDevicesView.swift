@@ -77,36 +77,30 @@ struct WaitingForDevicesView: View {
 
     private var connectionDetails: some View {
         VStack(alignment: .leading, spacing: 6) {
+            Text("Code")
+                .font(.subheadline.weight(.semibold))
+            PairingCodeView(code: server.pairingCode) { model.newPairingCode() }
+            Text("On the device, open Peek → Connect to Peek Pro, pick this Mac or type its address, and enter the code.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text("Address")
                 .font(.subheadline.weight(.semibold))
+                .padding(.top, 6)
             ForEach(server.addresses, id: \.self) { address in
                 CopyableValue(value: "\(address):\(server.port)")
-            }
-            Text("Token")
-                .font(.subheadline.weight(.semibold))
-                .padding(.top, 6)
-            HStack(spacing: 4) {
-                CopyableValue(value: server.token)
-                Button {
-                    model.store.regenerateToken()
-                } label: {
-                    Label("New Token", systemImage: "arrow.clockwise")
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .help("New token — devices with the old one are refused")
             }
         }
     }
 
+    /// What the app needs once; the code and the address are typed on the device. A token for
+    /// scripts and CI lives in Settings.
     private var snippetText: String {
         """
-        PeekRemote(
+        peek.attach(PeekRemote(
           peek,
-          endpoint: PeekRemoteEndpoint('\(server.addresses.first ?? "localhost")', \(server.port)),
-          token: '\(server.token)',
           name: 'My App', // optional: how Peek Pro lists this app
-        ).start();
+        )..start());
         """
     }
 

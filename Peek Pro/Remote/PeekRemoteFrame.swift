@@ -5,8 +5,14 @@ import Foundation
 nonisolated enum PeekRemoteFrame: Hashable, Sendable {
     /// App → desktop, first on every connection.
     case hello(PeekRemoteHello)
-    /// Desktop → app.
-    case welcome(protocolVersion: Int = PeekRemoteProtocol.version, serverName: String? = nil, serverVersion: String? = nil)
+    /// Desktop → app; `deviceToken` answers a right pairing code.
+    case welcome(
+        protocolVersion: Int = PeekRemoteProtocol.version,
+        serverName: String? = nil,
+        serverVersion: String? = nil,
+        serverID: String? = nil,
+        deviceToken: String? = nil
+    )
     /// Desktop → app, then the desktop closes.
     case denied(PeekRemoteDeniedReason, message: String)
     case entryAdded(PeekEntry)
@@ -29,14 +35,18 @@ nonisolated enum PeekRemoteFrame: Hashable, Sendable {
 
 nonisolated struct PeekRemoteHello: Hashable, Sendable {
     var protocolVersion: Int
+    /// The token the desktop shows, or a device token it issued.
     var token: String?
+    /// The pairing code a person typed; sent instead of a token.
+    var code: String?
     /// The same across reconnections while the app runs.
     var sessionID: String
     var info: PeekSessionInfo
 
-    init(protocolVersion: Int = PeekRemoteProtocol.version, token: String?, sessionID: String, info: PeekSessionInfo) {
+    init(protocolVersion: Int = PeekRemoteProtocol.version, token: String?, code: String? = nil, sessionID: String, info: PeekSessionInfo) {
         self.protocolVersion = protocolVersion
         self.token = token
+        self.code = code
         self.sessionID = sessionID
         self.info = info
     }
@@ -44,6 +54,8 @@ nonisolated struct PeekRemoteHello: Hashable, Sendable {
 
 nonisolated enum PeekRemoteDeniedReason: String, Hashable, Sendable {
     case token
+    /// The pairing code is wrong or has expired.
+    case code
     case protocolVersion
     case other
 }
@@ -58,23 +70,36 @@ nonisolated enum PeekRemoteProtocol {
     static let version = 1
     static let defaultPort = 9741
 
-    /// `nil` to welcome the app, or the refusal to send — the version first, then the token, as Peek's
-    /// `PeekRemoteProtocol.check` decides it.
-    static func check(_ hello: PeekRemoteHello, token: String?, oldest: Int = version, newest: Int = version) -> PeekRemoteFrame? {
+    /// `nil` to welcome the app, or the refusal to send, as Peek's `PeekRemoteProtocol.check` decides it: the
+    /// version first; a hello with a code is judged by `code` alone — the one shown now, `nil` when none is — and
+    /// a right one is the cue to issue a device token; any other hello needs `token` or one of `deviceTokens`,
+    /// unless `token` is `nil` and anyone is welcome.
+    static func check(
+        _ hello: PeekRemoteHello,
+        token: String?,
+        code: String? = nil,
+        deviceTokens: some Sequence<String> = [],
+        oldest: Int = version,
+        newest: Int = version
+    ) -> PeekRemoteFrame? {
         let spoken = hello.protocolVersion
         if spoken < oldest || spoken > newest {
             let range = oldest == newest ? "\(newest)" : "\(oldest) to \(newest)"
             let side = spoken < oldest ? "Peek in the app" : "the desktop"
             return .denied(.protocolVersion, message: "The app speaks protocol \(spoken), this desktop \(range). Update \(side).")
         }
-        if let token, !sameToken(hello.token, token) {
-            return .denied(.token, message: "The token does not match the one the desktop shows.")
+        if let given = hello.code {
+            if let code, sameSecret(given, code) { return nil }
+            return .denied(.code, message: "The code is wrong or has expired. Check the one the desktop shows.")
         }
-        return nil
+        guard let token else { return nil }
+        if sameSecret(hello.token, token) { return nil }
+        for issued in deviceTokens where sameSecret(hello.token, issued) { return nil }
+        return .denied(.token, message: "The token does not match the one the desktop shows.")
     }
 
     /// Looks at every character, so the time taken says nothing about how much of a guess was right.
-    private static func sameToken(_ given: String?, _ expected: String) -> Bool {
+    static func sameSecret(_ given: String?, _ expected: String) -> Bool {
         guard let given else { return false }
         let left = Array(given.utf8)
         let right = Array(expected.utf8)
@@ -96,12 +121,12 @@ nonisolated extension PeekRemoteFrame {
         let frame: PeekRemoteFrame
 
         private enum CodingKeys: String, CodingKey {
-            case type, protocolVersion, token, sessionId, session, server, reason, message
+            case type, protocolVersion, token, code, sessionId, session, server, deviceToken, reason, message
             case op, entry, id, count, requestId, side, body, error
         }
 
         private enum ServerKeys: String, CodingKey {
-            case name, version
+            case name, version, id
         }
 
         init(from decoder: any Decoder) throws {
@@ -112,6 +137,7 @@ nonisolated extension PeekRemoteFrame {
                 frame = .hello(PeekRemoteHello(
                     protocolVersion: try container.decode(Int.self, forKey: .protocolVersion),
                     token: try container.decodeIfPresent(String.self, forKey: .token),
+                    code: try container.decodeIfPresent(String.self, forKey: .code),
                     sessionID: try container.decode(String.self, forKey: .sessionId),
                     info: try container.decode(PeekSessionInfo.self, forKey: .session)
                 ))
@@ -120,7 +146,9 @@ nonisolated extension PeekRemoteFrame {
                 frame = .welcome(
                     protocolVersion: try container.decode(Int.self, forKey: .protocolVersion),
                     serverName: try server?.decodeIfPresent(String.self, forKey: .name),
-                    serverVersion: try server?.decodeIfPresent(String.self, forKey: .version)
+                    serverVersion: try server?.decodeIfPresent(String.self, forKey: .version),
+                    serverID: try server?.decodeIfPresent(String.self, forKey: .id),
+                    deviceToken: try container.decodeIfPresent(String.self, forKey: .deviceToken)
                 )
             case "denied":
                 let reason = try container.decodeIfPresent(String.self, forKey: .reason).flatMap(PeekRemoteDeniedReason.init(rawValue:))
@@ -185,17 +213,20 @@ nonisolated extension PeekRemoteFrame {
                 ("type", .string("hello")),
                 ("protocolVersion", .int(hello.protocolVersion)),
                 ("token", hello.token.map(JSONValue.string)),
+                ("code", hello.code.map(JSONValue.string)),
                 ("sessionId", .string(hello.sessionID)),
                 ("session", PeekFileWriter.encode(hello.info)),
             ])
-        case .welcome(let version, let name, let serverVersion):
+        case .welcome(let version, let name, let serverVersion, let serverID, let deviceToken):
             jsonObject([
                 ("type", .string("welcome")),
                 ("protocolVersion", .int(version)),
-                ("server", name == nil && serverVersion == nil ? nil : jsonObject([
+                ("server", name == nil && serverVersion == nil && serverID == nil ? nil : jsonObject([
                     ("name", name.map(JSONValue.string)),
                     ("version", serverVersion.map(JSONValue.string)),
+                    ("id", serverID.map(JSONValue.string)),
                 ])),
+                ("deviceToken", deviceToken.map(JSONValue.string)),
             ])
         case .denied(let reason, let message):
             jsonObject([("type", .string("denied")), ("reason", .string(reason.rawValue)), ("message", .string(message))])

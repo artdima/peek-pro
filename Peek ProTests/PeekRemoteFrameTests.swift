@@ -2,6 +2,13 @@ import Foundation
 import Testing
 @testable import Peek_Pro
 
+private extension PeekRemoteFrame {
+    var isCodeDenial: Bool {
+        if case .denied(.code, _) = self { return true }
+        return false
+    }
+}
+
 @Suite("Remote frames")
 struct PeekRemoteFrameTests {
     private func frame(_ name: String) throws -> PeekRemoteFrame {
@@ -97,6 +104,46 @@ struct PeekRemoteFrameTests {
         #expect(PeekRemoteFrame.bodyError(requestID: "1", error: .notHeld, message: nil).text
             == #"{"type":"bodyResponse","requestId":"1","error":"notHeld"}"#)
         #expect(PeekRemoteFrame.ping.text == #"{"type":"ping"}"#)
+    }
+
+    @Test("reads the pairing frames")
+    func pairing() throws {
+        guard case .hello(let hello) = try frame("hello-code.json") else {
+            Issue.record("hello-code.json is not a hello")
+            return
+        }
+        #expect(hello.code == "4719")
+        #expect(hello.token == nil)
+        #expect(try frame("welcome-paired.json") == .welcome(
+            serverName: "Peek Pro",
+            serverVersion: "1.0.0",
+            serverID: "9d4c2b7a1e0f4c8d",
+            deviceToken: "c1f6a2e9d4b8074f3e5a19c2b7d0e6f4a8c3b5d1e7f2094a6c8b0d3e5f7a1c2b"
+        ))
+        #expect(try frame("denied-code.json") == .denied(.code, message: "The code is wrong or has expired. Check the one the desktop shows."))
+        #expect(PeekRemoteFrame.welcome(serverID: "x").text == #"{"type":"welcome","protocolVersion":1,"server":{"id":"x"}}"#)
+    }
+
+    @Test("judges a hello with a code by the code alone, and accepts issued tokens")
+    func checkPairing() throws {
+        guard case .hello(let paired) = try frame("hello-code.json") else { return }
+        #expect(PeekRemoteProtocol.check(paired, token: "k7Qx2mP9", code: "4719") == nil)
+        #expect(PeekRemoteProtocol.check(paired, token: "k7Qx2mP9", code: "4718") == .denied(.code, message: "The code is wrong or has expired. Check the one the desktop shows."))
+        // No code on the desktop, or anyone welcome: a typed code still has to be right.
+        #expect(PeekRemoteProtocol.check(paired, token: "k7Qx2mP9")?.isCodeDenial == true)
+        #expect(PeekRemoteProtocol.check(paired, token: nil)?.isCodeDenial == true)
+
+        guard case .hello(var hello) = try frame("hello.json") else { return }
+        hello.token = "issued-1"
+        #expect(PeekRemoteProtocol.check(hello, token: "k7Qx2mP9", deviceTokens: ["issued-0", "issued-1"]) == nil)
+        #expect(PeekRemoteProtocol.check(hello, token: "k7Qx2mP9", deviceTokens: ["issued-0"]) == .denied(.token, message: "The token does not match the one the desktop shows."))
+
+        var newer = paired
+        newer.protocolVersion = 9
+        guard case .denied(.protocolVersion, _)? = PeekRemoteProtocol.check(newer, token: nil, code: "4719") else {
+            Issue.record("the version wasn't checked before the code")
+            return
+        }
     }
 
     @Test("welcomes the right token and version, and says which side to update otherwise")
