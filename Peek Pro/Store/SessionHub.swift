@@ -154,6 +154,11 @@ final class SessionHub {
         server.pairingCode = .random(lifetime: lifetime)
     }
 
+    /// What the store kept from earlier launches.
+    func setPairedDevices(_ devices: [PeekPairedDevice]) {
+        pairedDevices = devices
+    }
+
     func addPairedDevice(_ device: PeekPairedDevice) {
         pairedDevices.removeAll { $0.id == device.id }
         pairedDevices.append(device)
@@ -167,6 +172,9 @@ final class SessionHub {
 
     func removePairedDevice(_ id: String) {
         pairedDevices.removeAll { $0.id == id }
+        for index in sessions.indices where sessions[index].pairedDeviceID == id {
+            sessions[index].pairedDeviceID = nil
+        }
     }
 
     /// Remembers the token while the policy keeps it, and forgets it otherwise.

@@ -13,8 +13,8 @@ struct PeekRemotePairingTests {
         token: "k7q4-mx2p-9vd3"
     ))
 
-    private func sessions() -> PeekRemoteSessions {
-        PeekRemoteSessions(hub: hub, serverVersion: "1.0", serverID: "mac-1", deviceTokens: InMemoryDeviceTokens())
+    private func sessions(store: PeekPairedDevices = InMemoryPairedDevices()) -> PeekRemoteSessions {
+        PeekRemoteSessions(hub: hub, serverVersion: "1.0", serverID: "mac-1", pairedDevices: store)
     }
 
     private func hello(_ sessionID: String = "3f2a", token: String? = nil, code: String? = nil) -> PeekRemoteFrame {
@@ -72,7 +72,8 @@ struct PeekRemotePairingTests {
         #expect(device.name == "Acme Shop")
         #expect(device.platform == .iOS)
         #expect(device.address == "192.168.1.20")
-        #expect(remote.deviceTokens.all[token] == device.id)
+        #expect(remote.pairedDevices.tokens[token] == device.id)
+        #expect(remote.pairedDevices.devices == [device])
         #expect(hub.server.pairingCode != shown)
         #expect(hub.rejected.isEmpty)
     }
@@ -159,7 +160,8 @@ struct PeekRemotePairingTests {
         remote.forgetDevice(device.id)
         #expect(channel.isClosed)
         #expect(hub.pairedDevices.isEmpty)
-        #expect(remote.deviceTokens.all.isEmpty)
+        #expect(remote.pairedDevices.tokens.isEmpty)
+        #expect(remote.pairedDevices.devices.isEmpty)
         #expect(hub.session(.live("3f2a"))?.connection == .disconnected)
 
         let back = connect(remote, hello(token: token))
@@ -169,6 +171,32 @@ struct PeekRemotePairingTests {
         }
         let paired = connect(remote, hello(code: hub.server.pairingCode.digits))
         #expect(issuedToken(paired) != nil)
+    }
+
+    @Test("remembers a device across a relaunch, and forgets them all at once")
+    func relaunch() throws {
+        let store = InMemoryPairedDevices()
+        let first = sessions(store: store)
+        let channel = connect(first, hello(code: hub.server.pairingCode.digits))
+        let token = try #require(issuedToken(channel))
+        #expect(hub.session(.live("3f2a"))?.pairedDeviceID == hub.pairedDevices.first?.id)
+        channel.close()
+
+        let hub = SessionHub()
+        let relaunched = PeekRemoteSessions(hub: hub, serverVersion: "1.0", serverID: "mac-1", pairedDevices: store)
+        #expect(hub.pairedDevices.count == 1)
+        let back = FakeChannel(address: "192.168.1.40")
+        relaunched.accept(back)
+        back.receive(hello(token: token))
+        #expect(back.sent.first == .welcome(serverName: "Peek Pro", serverVersion: "1.0", serverID: "mac-1"))
+        #expect(store.devices.first?.address == "192.168.1.40")
+        #expect(hub.session(.live("3f2a"))?.pairedDeviceID == store.devices.first?.id)
+
+        relaunched.forgetAllDevices()
+        #expect(back.isClosed)
+        #expect(hub.pairedDevices.isEmpty)
+        #expect(store.devices.isEmpty && store.tokens.isEmpty)
+        #expect(hub.session(.live("3f2a"))?.pairedDeviceID == nil)
     }
 
     @Test("a new code on request stops the old one")

@@ -27,7 +27,7 @@ final class PeekRemoteSessions {
 
     /// Tells this desktop from others across launches, so a device knows whose token it holds.
     let serverID: String
-    let deviceTokens: PeekDeviceTokens
+    let pairedDevices: PeekPairedDevices
     private let hub: SessionHub
     private let serverVersion: String?
     private var codeFailures = 0
@@ -62,12 +62,13 @@ final class PeekRemoteSessions {
         hub: SessionHub,
         serverVersion: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
         serverID: String = PeekRemoteSessions.storedServerID(),
-        deviceTokens: PeekDeviceTokens = InMemoryDeviceTokens()
+        pairedDevices: PeekPairedDevices = InMemoryPairedDevices()
     ) {
         self.hub = hub
         self.serverVersion = serverVersion
         self.serverID = serverID
-        self.deviceTokens = deviceTokens
+        self.pairedDevices = pairedDevices
+        hub.setPairedDevices(pairedDevices.devices)
         rotateCode()
     }
 
@@ -96,9 +97,13 @@ final class PeekRemoteSessions {
     /// Forgets the device's token and closes its session: when the app comes back with the old token it is
     /// turned away with `denied(token)`, which is what makes it ask for a code again.
     func forgetDevice(_ id: String) {
-        deviceTokens.remove(deviceID: id)
+        pairedDevices.remove(id)
         hub.removePairedDevice(id)
         for link in links.values where link.deviceID == id { link.channel.close() }
+    }
+
+    func forgetAllDevices() {
+        for device in pairedDevices.devices { forgetDevice(device.id) }
     }
 
     var connectedCount: Int { links.count }
@@ -162,7 +167,7 @@ final class PeekRemoteSessions {
             hello,
             token: hub.server.token,
             code: hub.server.pairingCode.digits,
-            deviceTokens: deviceTokens.all.keys,
+            deviceTokens: pairedDevices.tokens.keys,
             oldest: Self.oldestProtocol,
             newest: Self.newestProtocol
         )
@@ -185,26 +190,27 @@ final class PeekRemoteSessions {
             channel.close()
             return
         }
-        var deviceID = hello.token.flatMap { deviceTokens.all[$0] }
+        var deviceID = hello.token.flatMap { pairedDevices.tokens[$0] }
         var issued: String?
         if hello.code != nil {
             // The code is spent; from now on the device carries a token of its own.
             let token = Self.newDeviceToken()
-            let id = UUID().uuidString.lowercased()
-            deviceTokens.add(token, for: id)
-            hub.addPairedDevice(PeekPairedDevice(
-                id: id,
+            let device = PeekPairedDevice(
+                id: UUID().uuidString.lowercased(),
                 name: hello.info.name,
                 platform: hello.info.platform,
                 address: channel.address,
                 pairedAt: .now,
                 lastSeenAt: .now
-            ))
-            deviceID = id
+            )
+            pairedDevices.add(device, token: token)
+            hub.addPairedDevice(device)
+            deviceID = device.id
             issued = token
             rotateCode()
         } else if let deviceID {
             hub.touchPairedDevice(deviceID, address: channel.address)
+            if let device = hub.pairedDevices.first(where: { $0.id == deviceID }) { pairedDevices.update(device) }
         }
         channel.send(PeekRemoteFrame.welcome(
             serverName: Self.serverName,
@@ -237,7 +243,8 @@ final class PeekRemoteSessions {
             connection: .connected,
             address: channel.address,
             connectedAt: .now,
-            droppedCount: 0
+            droppedCount: 0,
+            pairedDeviceID: deviceID
         ))
         channel.onText = { [weak self] text in self?.receive(text, in: key) }
         channel.onClose = { [weak self, weak channel] in

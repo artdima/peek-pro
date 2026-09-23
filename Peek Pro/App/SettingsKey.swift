@@ -7,6 +7,8 @@ enum SettingsKey {
     static let token = "server.token"
     /// Made once; devices keep their token under it.
     static let serverID = "server.id"
+    /// The paired devices, as JSON; their tokens are in the Keychain.
+    static let pairedDevices = "server.pairedDevices"
     static let bonjourEnabled = "server.bonjourEnabled"
     static let bonjourName = "server.bonjourName"
     static let bodyFontSize = "body.fontSize"

@@ -84,6 +84,15 @@ final class AppModel {
         markAllSeen()
     }
 
+    /// The device must pair again; mocks only lose the row.
+    func forgetDevice(_ id: String) {
+        if let remote { remote.sessions.forgetDevice(id) } else { store.removePairedDevice(id) }
+    }
+
+    func forgetAllDevices() {
+        if let remote { remote.sessions.forgetAllDevices() } else { store.pairedDevices.map(\.id).forEach(store.removePairedDevice) }
+    }
+
     /// A new pairing code; the real server also forgets the wrong tries against the old one.
     func newPairingCode() {
         if let remote { remote.sessions.rotateCode() } else { store.rotatePairingCode() }

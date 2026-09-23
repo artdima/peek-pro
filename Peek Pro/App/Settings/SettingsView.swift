@@ -83,6 +83,23 @@ private struct ConnectionSettings: View {
             }
 
             Section {
+                if model.store.pairedDevices.isEmpty {
+                    Text("No devices have paired yet. A device that connects with the code shows up here.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.store.pairedDevices.reversed()) { device in
+                        PairedDeviceRow(device: device) { model.forgetDevice(device.id) }
+                    }
+                    Button("Forget All", role: .destructive) { model.forgetAllDevices() }
+                }
+            } header: {
+                Text("Paired Devices")
+            } footer: {
+                Text("A forgotten device is disconnected and has to enter the code again.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Advertise on the local network", isOn: $bonjourEnabled)
                     .onChange(of: bonjourEnabled) { model.applyServerSettings() }
                 TextField("Name", text: $bonjourName, prompt: Text(PeekServerState.defaultBonjourName))
@@ -99,6 +116,29 @@ private struct ConnectionSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct PairedDeviceRow: View {
+    let device: PeekPairedDevice
+    let onForget: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: device.platform.symbolName)
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.title)
+                Text("\(device.platform.title) · \(device.address) · last seen \(PeekFormat.relative(device.lastSeenAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Forget", action: onForget)
+                .controlSize(.small)
+        }
+        .help("Paired \(PeekFormat.dateTime(device.pairedAt))")
     }
 }
 

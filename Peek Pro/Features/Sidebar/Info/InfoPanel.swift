@@ -38,6 +38,7 @@ struct InfoPanel: View {
             InfoRow(title: "Status", value: status(of: session)),
             InfoRow(title: "Address", value: session.address, isMonospaced: true),
             InfoRow(title: "Connected", value: PeekFormat.dateTime(session.connectedAt)),
+            InfoRow(title: "Access", value: session.pairedDeviceID == nil ? "Token in code" : "Paired with a code"),
         ]
         if let disconnectedAt = session.disconnectedAt {
             rows.append(InfoRow(title: "Disconnected", value: PeekFormat.dateTime(disconnectedAt)))

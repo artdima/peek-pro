@@ -79,6 +79,8 @@ nonisolated struct PeekLiveSession: Identifiable, Hashable, Sendable {
     var disconnectedAt: Date?
     /// Entries the device threw away because its send queue overflowed.
     var droppedCount: Int
+    /// The paired device behind the connection; `nil` when it came with the token from Settings.
+    var pairedDeviceID: String? = nil
 
     var id: PeekSessionID { .live(key) }
 

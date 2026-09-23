@@ -29,6 +29,12 @@ enum PeekFormat {
         date.formatted(date: .abbreviated, time: .standard)
     }
 
+    /// "2 minutes ago", "just now" for the last minute.
+    static func relative(_ date: Date, to now: Date = .now) -> String {
+        if now.timeIntervalSince(date) < 60 { return "just now" }
+        return date.formatted(.relative(presentation: .named))
+    }
+
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

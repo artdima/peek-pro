@@ -43,7 +43,7 @@ nonisolated struct PeekPairingCode: Hashable, Sendable {
 }
 
 /// A device that paired with a code; its token lives elsewhere, this is what Settings lists.
-nonisolated struct PeekPairedDevice: Identifiable, Hashable, Sendable {
+nonisolated struct PeekPairedDevice: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let name: String?
     let platform: PeekPlatform
@@ -53,6 +53,39 @@ nonisolated struct PeekPairedDevice: Identifiable, Hashable, Sendable {
 
     var title: String {
         name ?? "\(platform.title) · \(address)"
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, platform, address, pairedAt, lastSeenAt
+    }
+
+    init(id: String, name: String?, platform: PeekPlatform, address: String, pairedAt: Date, lastSeenAt: Date) {
+        self.id = id
+        self.name = name
+        self.platform = platform
+        self.address = address
+        self.pairedAt = pairedAt
+        self.lastSeenAt = lastSeenAt
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        platform = PeekPlatform(rawValue: try container.decode(String.self, forKey: .platform))
+        address = try container.decode(String.self, forKey: .address)
+        pairedAt = try container.decode(Date.self, forKey: .pairedAt)
+        lastSeenAt = try container.decode(Date.self, forKey: .lastSeenAt)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(name, forKey: .name)
+        try container.encode(platform.rawValue, forKey: .platform)
+        try container.encode(address, forKey: .address)
+        try container.encode(pairedAt, forKey: .pairedAt)
+        try container.encode(lastSeenAt, forKey: .lastSeenAt)
     }
 }
 
