@@ -105,11 +105,11 @@ struct PeekRemoteBodiesTests {
         let channel = connect(remote)
         hub.loadBody(key, in: id)
         let request = try #require(lastRequest(channel))
-        try await Task.sleep(for: .milliseconds(200))
-        guard case .failed? = hub.bodyLoad(key, in: id) else {
-            Issue.record("Expected a failure, got \(String(describing: hub.bodyLoad(key, in: id)))")
-            return
+        let failed = await eventually {
+            guard case .failed? = hub.bodyLoad(key, in: id) else { return false }
+            return true
         }
+        try #require(failed, "Expected a failure, got \(String(describing: hub.bodyLoad(key, in: id)))")
         channel.receive(.bodyResponse(requestID: request.requestID, body: .text("late")))
         guard case .remote? = hub.entry(PeekId("n1"), in: id)?.response?.body else {
             Issue.record("A late answer replaced the body")

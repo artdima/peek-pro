@@ -226,8 +226,8 @@ struct PeekRemoteSessionsTests {
         remote.accept(silent)
         remote.accept(polite)
         polite.receive(hello())
-        try? await Task.sleep(for: .milliseconds(200))
-        #expect(silent.isClosed)
+        #expect(await eventually { silent.isClosed })
+        try? await Task.sleep(for: .milliseconds(100))
         #expect(!polite.isClosed)
     }
 

@@ -16,6 +16,8 @@ final class PeekRemoteServer {
     nonisolated static let serviceType = "_peek._tcp"
 
     private(set) var port: Int
+    /// Rides in the TXT record, so an app can tell the desktop it paired with before connecting.
+    let serverID: String?
     private(set) var state = State.idle {
         didSet { if state != oldValue { onStateChange?(state) } }
     }
@@ -34,8 +36,9 @@ final class PeekRemoteServer {
 
     private var listener: NWListener?
 
-    init(port: Int = PeekServerState.defaultPort) {
+    init(port: Int = PeekServerState.defaultPort, serverID: String? = nil) {
         self.port = port
+        self.serverID = serverID
     }
 
     func start() {
@@ -97,9 +100,15 @@ final class PeekRemoteServer {
         start()
     }
 
+    nonisolated static func txtRecord(serverID: String?) -> [String: String] {
+        var record = ["protocolVersion": String(PeekRemoteProtocol.version)]
+        record["serverId"] = serverID
+        return record
+    }
+
     private var service: NWListener.Service? {
         serviceName.map {
-            NWListener.Service(name: $0, type: Self.serviceType, txtRecord: NWTXTRecord(["protocolVersion": String(PeekRemoteProtocol.version)]))
+            NWListener.Service(name: $0, type: Self.serviceType, txtRecord: NWTXTRecord(Self.txtRecord(serverID: serverID)))
         }
     }
 

@@ -82,16 +82,6 @@ struct PeekRemoteDisconnectTests {
         #expect(!remote.disconnect(id))
     }
 
-    /// Polls: the heartbeat runs on the main actor alongside the other tests.
-    private func eventually(_ condition: () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now + .seconds(5)
-        while !condition() {
-            if ContinuousClock.now >= deadline { return false }
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        return true
-    }
-
     @Test("pings a quiet device and drops one that doesn't answer")
     func dropsSilent() async {
         let remote = PeekRemoteSessions(hub: hub, serverID: "mac-1")

@@ -14,10 +14,10 @@ final class PeekRemoteHost {
 
     init(hub: SessionHub) {
         self.hub = hub
-        server = PeekRemoteServer(port: hub.server.port)
-        server.serviceName = PeekServerState.bonjourNameFromSettings
         let sessions = PeekRemoteSessions(hub: hub, pairedDevices: KeychainPairedDevices())
         self.sessions = sessions
+        server = PeekRemoteServer(port: hub.server.port, serverID: sessions.serverID)
+        server.serviceName = PeekServerState.bonjourNameFromSettings
         server.onConnection = { sessions.accept($0) }
         server.onStateChange = { [weak self] _ in
             self?.publish()

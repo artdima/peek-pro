@@ -11,16 +11,6 @@ struct PeekRemoteServerTests {
         Int.random(in: 49_152...60_999)
     }
 
-    /// Polls, since the listener reports on the main queue.
-    private func eventually(_ condition: () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now + .seconds(5)
-        while !condition() {
-            if ContinuousClock.now >= deadline { return false }
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        return true
-    }
-
     @Test("listens on the port it was given")
     func listens() async {
         let port = freePort()
@@ -153,6 +143,12 @@ struct PeekRemoteServerTests {
         #expect(await eventually { server.registeredName != nil })
         server.stop()
         #expect(server.registeredName == nil)
+    }
+
+    @Test("tells which desktop this is in the TXT record")
+    func txtRecord() {
+        #expect(PeekRemoteServer.txtRecord(serverID: "desk-1") == ["protocolVersion": "1", "serverId": "desk-1"])
+        #expect(PeekRemoteServer.txtRecord(serverID: nil) == ["protocolVersion": "1"])
     }
 
     @Test("lists local IPv4 addresses without loopback")

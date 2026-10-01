@@ -225,11 +225,18 @@ same network can offer it by name instead of asking for an address:
 - The SRV record gives the host and port to connect to; the path is `/` as
   always.
 - The TXT record has `protocolVersion`: the newest protocol the desktop
-  speaks, so an app can tell an old desktop apart before connecting.
+  speaks, so an app can tell an old desktop apart before connecting. It may
+  have `serverId`, the same `id` the `welcome` carries: an app that paired
+  with that desktop sends its device token, and to any other desktop it
+  sends none — a token is never offered to a desktop that did not issue it.
 
 Advertising can be switched off, and many networks block multicast DNS, so
 an app always accepts an address typed in; discovery is a convenience on
-top. Browsing does not replace the token: the `hello` still carries it.
+top. Browsing does not replace the token or the code: the `hello` still
+carries one. On iOS an app browses through the system's Bonjour, which needs
+`NSLocalNetworkUsageDescription` and `_peek._tcp` in `NSBonjourServices`;
+multicast sockets of its own would need an entitlement Apple grants on
+request.
 
 ## Reference frames
 

@@ -127,8 +127,7 @@ struct PeekRemotePairingTests {
         let remote = sessions()
         remote.codeLifetime = 0.05
         let shown = hub.server.pairingCode
-        try? await Task.sleep(for: .milliseconds(150))
-        #expect(hub.server.pairingCode != shown)
+        #expect(await eventually { hub.server.pairingCode != shown })
         let channel = connect(remote, hello(code: shown.digits))
         guard case .denied(.code, _)? = channel.sent.first else {
             Issue.record("An old code was accepted")
