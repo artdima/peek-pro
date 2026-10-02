@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE: "26.6"
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode ${{ env.XCODE }}
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
+          xcodebuild -version
+          sw_vers
+
+      # No certificates here: sign to run locally. The hardened runtime is
+      # for notarized builds and would refuse to load an ad hoc test bundle.
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "Peek Pro.xcodeproj" \
+            -scheme "Peek Pro" \
+            -destination 'platform=macOS' \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
+            ENABLE_HARDENED_RUNTIME=NO \
+            | tee build.log
+
+      - name: Keep the results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: |
+            TestResults.xcresult
+            build.log
+
+  spec:
+    name: Spec matches Peek
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the Peek commit
+        id: peek
+        run: echo "commit=$(cat 'Peek ProTests/Spec/PEEK_SPEC_COMMIT')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          repository: artdima/peek
+          ref: ${{ steps.peek.outputs.commit }}
+          path: .peek
+
+      # The tests read the committed copy; this only checks it was not edited by hand.
+      - name: Sync from that commit
+        run: PEEK_DIR="$PWD/.peek" sh scripts/sync-peek-spec.sh
+
+      - name: The copy matches
+        run: |
+          changes=$(git status --porcelain -- "Peek ProTests/Spec")
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            echo "::error::Peek ProTests/Spec differs from Peek ${{ steps.peek.outputs.commit }}; run scripts/sync-peek-spec.sh"
+            exit 1
+          fi
