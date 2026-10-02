@@ -33,6 +33,9 @@ jobs:
       # No certificates here: sign to run locally. The hardened runtime is
       # for notarized builds and would refuse to load an ad hoc test bundle.
       - name: Build and test
+        env:
+          # Reaches the tests as PEEK_SKIP_BONJOUR: the runner's sandbox can't register a service.
+          TEST_RUNNER_PEEK_SKIP_BONJOUR: "1"
         run: |
           set -o pipefail
           xcodebuild test \
@@ -65,6 +68,16 @@ jobs:
       - name: Read the Peek commit
         id: peek
         run: echo "commit=$(cat 'Peek ProTests/Spec/PEEK_SPEC_COMMIT')" >> "$GITHUB_OUTPUT"
+
+      - name: Find that commit on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ steps.peek.outputs.commit }}
+        run: |
+          gh api "repos/artdima/peek/commits/$COMMIT" --silent || {
+            echo "::error::Peek $COMMIT is not on GitHub; push Peek, then run this again"
+            exit 1
+          }
 
       - uses: actions/checkout@v7
         with:

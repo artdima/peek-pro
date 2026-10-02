@@ -3,6 +3,9 @@ import Network
 import Testing
 @testable import Peek_Pro
 
+/// CI runners can't register a Bonjour service from the sandbox; the workflow sets `TEST_RUNNER_PEEK_SKIP_BONJOUR`.
+private let bonjourRegisters = ProcessInfo.processInfo.environment["PEEK_SKIP_BONJOUR"] == nil
+
 @MainActor
 @Suite("Remote server", .serialized)
 struct PeekRemoteServerTests {
@@ -94,7 +97,7 @@ struct PeekRemoteServerTests {
         "Peek Pro Test \(UUID().uuidString.prefix(8))"
     }
 
-    @Test("advertises over Bonjour under the name it was given")
+    @Test("advertises over Bonjour under the name it was given", .enabled(if: bonjourRegisters))
     func advertises() async {
         let name = testName()
         let server = PeekRemoteServer(port: freePort())
@@ -117,7 +120,7 @@ struct PeekRemoteServerTests {
         #expect(server.registeredName == nil)
     }
 
-    @Test("changes the name, and stops advertising, without a restart")
+    @Test("changes the name, and stops advertising, without a restart", .enabled(if: bonjourRegisters))
     func renames() async {
         let first = testName(), second = testName()
         let server = PeekRemoteServer(port: freePort())
@@ -135,7 +138,7 @@ struct PeekRemoteServerTests {
         #expect(server.state == .listening)
     }
 
-    @Test("forgets the registered name when stopped")
+    @Test("forgets the registered name when stopped", .enabled(if: bonjourRegisters))
     func stopsAdvertising() async {
         let server = PeekRemoteServer(port: freePort())
         server.serviceName = testName()
