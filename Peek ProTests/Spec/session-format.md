@@ -2,7 +2,7 @@
 
 A `.peek` file holds the network calls Peek recorded in an app: one session,
 written on the device and read anywhere — by Peek itself, by
-[Peek Pro](https://github.com/artdima/peek) on the desktop, by a script. The
+[Peek Pro](https://github.com/artdima/peek-pro) on the desktop, by a script. The
 same entry lines travel as frames between a device and a desktop viewer.
 
 This document is the source of truth for the format. It is written so that a
