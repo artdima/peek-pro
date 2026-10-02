@@ -138,4 +138,4 @@ next to this repository, `scripts/sync-peek-spec.sh` brings them up to date
 
 ## License
 
-MIT © 2026 Dmitrii Medyannik — see [LICENSE](LICENSE).
+MIT © 2026 Dmitriy Medyannik — see [LICENSE](LICENSE).

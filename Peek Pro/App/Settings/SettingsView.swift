@@ -114,6 +114,14 @@ private struct ConnectionSettings: View {
                 Text("Lets devices on the same Wi-Fi find this Mac without typing an address. Many office networks block it — the address above always works.")
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Link("Connecting an App", destination: PeekProLinks.remoteGuide)
+                Link("Peek Pro on GitHub", destination: PeekProLinks.repository)
+            } footer: {
+                Text("The guide covers adding peek_remote, pairing, addresses for each kind of device and what to do when a device can't connect.")
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }

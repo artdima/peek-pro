@@ -130,9 +130,11 @@ struct AppCommands: Commands {
 
     private var helpCommands: some Commands {
         CommandGroup(replacing: .help) {
-            Button("Peek on GitHub") {
-                NSWorkspace.shared.open(AboutPanel.peekRepository)
-            }
+            Button("Peek Pro on GitHub") { NSWorkspace.shared.open(PeekProLinks.repository) }
+            Button("Connecting an App") { NSWorkspace.shared.open(PeekProLinks.remoteGuide) }
+            Button("Report an Issue…") { NSWorkspace.shared.open(PeekProLinks.issues) }
+            Divider()
+            Button("Peek on GitHub") { NSWorkspace.shared.open(PeekProLinks.peek) }
         }
     }
 

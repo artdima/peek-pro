@@ -1,8 +1,6 @@
 import AppKit
 
 enum AboutPanel {
-    static let peekRepository = URL(string: "https://github.com/artdima/peek")!
-
     static func show() {
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
         NSApp.activate()
@@ -22,8 +20,8 @@ enum AboutPanel {
             attributes: body
         )
         var link = body
-        link[.link] = peekRepository
-        text.append(NSAttributedString(string: "github.com/artdima/peek", attributes: link))
+        link[.link] = PeekProLinks.repository
+        text.append(NSAttributedString(string: "github.com/artdima/peek-pro", attributes: link))
         return text
     }
 }
