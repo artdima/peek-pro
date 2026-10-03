@@ -68,7 +68,7 @@ struct WaitingForDevicesView: View {
             Text("Another app is listening on this port. Quit it or choose another port, then update the endpoint in your app.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            SettingsLink {
+            SettingsPageLink(page: .server) {
                 Text("Change Port…")
             }
             .padding(.top, 4)
@@ -185,7 +185,7 @@ struct ServerStatusFooter: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if server.status == .portInUse {
-                    SettingsLink {
+                    SettingsPageLink(page: .server) {
                         Text("Change…")
                     }
                     .buttonStyle(.link)
