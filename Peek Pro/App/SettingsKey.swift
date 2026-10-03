@@ -14,6 +14,8 @@ enum SettingsKey {
     static let bodyFontSize = "body.fontSize"
     static let jsonMode = "body.jsonMode"
     static let wraps = "body.wraps"
+    /// The Settings page shown last, and the one a link into Settings asks for.
+    static let settingsPage = "settings.page"
 
     static let defaultPort = 9741
 }
