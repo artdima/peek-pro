@@ -196,7 +196,7 @@ private struct ConnectionPopover: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                SettingsLink {
+                SettingsPageLink(page: .pairing) {
                     Text("Settings…")
                 }
                 .controlSize(.small)
