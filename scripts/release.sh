@@ -1,7 +1,8 @@
 #!/bin/sh
 # Builds a release at build/release: Peek Pro signed with Developer ID and
-# notarized, in a signed and notarized DMG. Needs a Developer ID Application
-# certificate and a notarytool profile, NOTARY_PROFILE (peek-pro by default).
+# notarized, in a signed and notarized DMG (make-dmg.sh). Needs a Developer ID
+# Application certificate and a notarytool profile, NOTARY_PROFILE (peek-pro by
+# default).
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -73,10 +74,7 @@ ditto -c -k --keepParent "$app" "$out/Peek Pro.zip"
 notarize "$out/Peek Pro.zip"
 xcrun stapler staple "$app"
 
-mkdir "$out/dmg"
-ditto "$app" "$out/dmg/Peek Pro.app"
-ln -s /Applications "$out/dmg/Applications"
-hdiutil create -quiet -volname "Peek Pro" -srcfolder "$out/dmg" -format UDZO "$dmg"
+"$root/scripts/make-dmg.sh" "$app" "$dmg"
 codesign --sign "$identity" --timestamp "$dmg"
 notarize "$dmg"
 xcrun stapler staple "$dmg"
