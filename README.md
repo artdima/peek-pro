@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/macOS-26%2B-black?logo=apple" alt="macOS 26 or later">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/status-work%20in%20progress-orange" alt="Status: work in progress">
+  <a href="https://github.com/artdima/peek-pro/releases/latest"><img src="https://img.shields.io/github/v/release/artdima/peek-pro" alt="Latest release"></a>
 </p>
 
 ---
@@ -75,6 +75,13 @@ A device that goes away leaves its calls behind, to read, save and export.
 - **Files.** `.peek` files open from Finder; a live session saves as one,
   for a bug report or a colleague. Export as HAR, cURL, Markdown or text.
 
+## Installing
+
+Download `Peek-Pro-<version>.dmg` from the
+[latest release](https://github.com/artdima/peek-pro/releases/latest), open
+it and drag Peek Pro to Applications. It needs macOS 26 or later, and it is
+signed with Developer ID and notarized by Apple.
+
 ## Connecting an app
 
 In the Flutter app, add `peek_remote` and start it in debug builds:
@@ -108,7 +115,7 @@ leaves the device, and what to do when it does not connect.
 
 ## Building from source
 
-Peek Pro has no signed release yet. It needs macOS 26 or later and Xcode 26:
+Peek Pro needs macOS 26 or later and Xcode 26:
 
 ```sh
 git clone https://github.com/artdima/peek-pro.git
@@ -128,6 +135,9 @@ specifications, not from its Dart code. Their reference files are copied
 into the tests, with the Peek commit they came from; with Peek checked out
 next to this repository, `scripts/sync-peek-spec.sh` brings them up to date
 (`PEEK_DIR` points elsewhere).
+
+A release — the app signed with Developer ID and notarized, in a DMG — comes
+from `scripts/release.sh`; what it needs is in the script's header.
 
 ## Related
 
