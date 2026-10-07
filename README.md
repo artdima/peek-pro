@@ -80,7 +80,8 @@ A device that goes away leaves its calls behind, to read, save and export.
 Download `Peek-Pro-<version>.dmg` from the
 [latest release](https://github.com/artdima/peek-pro/releases/latest), open
 it and drag Peek Pro to Applications. It needs macOS 26 or later, and it is
-signed with Developer ID and notarized by Apple.
+signed with Developer ID and notarized by Apple. Peek Pro collects nothing —
+see [Privacy](PRIVACY.md).
 
 ## Connecting an app
 
