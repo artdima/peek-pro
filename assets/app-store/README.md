@@ -93,6 +93,8 @@ To try it without a Flutter app, open the attached sample session: unzip review-
 Live viewing needs a Flutter app with the peek_remote package on the same network: the app finds the Mac over Bonjour, and the person types the four-digit code that Peek Pro shows. The setup guide: https://github.com/artdima/peek/blob/main/doc/remote.md
 
 No account or sign-in is needed. Peek Pro makes no outgoing connections; it listens on port 9741 and takes calls only from paired devices.
+
+About com.apple.security.network.server: Peek Pro is a server and needs it. At launch it opens a WebSocket listener with Network.framework (NWListener) on TCP port 9741 and advertises it over Bonjour as _peek._tcp (NSBonjourServices, NSLocalNetworkUsageDescription). Flutter apps under development connect to it from a phone, a simulator or an emulator and stream the calls they recorded; a device gets in only with the four-digit code Peek Pro shows. The window says "Listening on port 9741" next to the session list, and Settings → Connection shows the addresses. To check from Terminal on the same Mac: nc -z localhost 9741 && echo listening. Source: https://github.com/artdima/peek-pro/blob/main/Peek%20Pro/Remote/PeekRemoteServer.swift
 ```
 
 **Attachment**
