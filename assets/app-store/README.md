@@ -9,7 +9,7 @@ code blocks are ready to paste. The screenshots beside this file are
 | Field | Value |
 | --- | --- |
 | Name | Peek Pro: Network Logger |
-| Subtitle | For Flutter apps, on your Mac |
+| Subtitle | Network logs from Flutter apps |
 | Bundle ID | `com.artdima.Peek-Pro` |
 | SKU | `peek-pro` |
 | Primary language | English (U.S.) |

@@ -17,6 +17,7 @@ struct AppCommands: Commands {
         viewCommands
         requestMenu
         sessionMenu
+        windowCommands
         helpCommands
     }
 
@@ -125,6 +126,13 @@ struct AppCommands: Commands {
 
             Button("Disconnect") { model.disconnectSelectedSession() }
                 .disabled(!model.canPauseSelectedSession)
+        }
+    }
+
+    private var windowCommands: some Commands {
+        CommandGroup(after: .singleWindowList) {
+            Button("Peek Pro") { openWindow(id: "main") }
+                .keyboardShortcut("0")
         }
     }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Window menu.** A Peek Pro item (⌘0) brings the main window back after it
+  has been closed.
+
 ## 1.0.0
 
 The first release, signed with Developer ID and notarized by Apple. Peek Pro
