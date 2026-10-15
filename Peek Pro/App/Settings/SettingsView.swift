@@ -127,22 +127,45 @@ private struct GeneralSettings: View {
     @Environment(AppModel.self) private var model
 
     @AppStorage(DetailPlacement.storageKey) private var detailPlacement: DetailPlacement = .bottom
+    @AppStorage(DetailPlacement.lastVisibleStorageKey) private var lastVisiblePlacement: DetailPlacement = .bottom
 
     var body: some View {
         @Bindable var model = model
         Form {
             Section {
-                Picker("Show requests as", selection: $model.viewMode) {
-                    ForEach(ConsoleViewMode.allCases) { Text($0.title).tag($0) }
-                }
-                Picker("Details", selection: $detailPlacement) {
-                    ForEach(DetailPlacement.allCases) { Text($0.title).tag($0) }
-                }
+                DetailPlacementPicker(selection: openingPlacement)
+                    .accessibilityLabel("Details")
             } header: {
                 Text("Console")
             } footer: {
-                Text("A table has a column for each field; a list reads like Peek on the phone. The details of a request open below the requests or beside them.")
+                Text("Where a request's details open — below the list or beside it.")
                     .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Picker("Show requests as", selection: $model.viewMode) {
+                    ForEach([ConsoleViewMode.list, .table]) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Requests")
+            } footer: {
+                Text("A table has a column for each field; a list reads like Peek on the phone.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// With the details hidden, a choice here is where they come back.
+    private var openingPlacement: Binding<DetailPlacement> {
+        Binding {
+            if detailPlacement != .hidden { return detailPlacement }
+            return lastVisiblePlacement == .hidden ? .bottom : lastVisiblePlacement
+        } set: { placement in
+            if detailPlacement == .hidden {
+                lastVisiblePlacement = placement
+            } else {
+                detailPlacement = placement
             }
         }
     }

@@ -6,49 +6,20 @@ struct AppThemePicker: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(AppTheme.allCases) { theme in
-                AppThemeOption(theme: theme, isSelected: theme == selection) {
+                PreviewChoice(
+                    theme.title,
+                    isSelected: theme == selection,
+                    cornerRadius: AppThemeThumbnail.cornerRadius
+                ) {
                     selection = theme
+                } preview: {
+                    AppThemeThumbnail(theme: theme)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
         .padding(.vertical, 6)
         .accessibilityElement(children: .contain)
-    }
-}
-
-private struct AppThemeOption: View {
-    let theme: AppTheme
-    let isSelected: Bool
-    let action: () -> Void
-
-    private static let ringWidth: CGFloat = 2
-    private static let ringGap: CGFloat = 2
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 7) {
-                AppThemeThumbnail(theme: theme)
-                    .padding(Self.ringWidth + Self.ringGap)
-                    .overlay {
-                        if isSelected {
-                            RoundedRectangle(
-                                cornerRadius: AppThemeThumbnail.cornerRadius + Self.ringWidth + Self.ringGap,
-                                style: .continuous
-                            )
-                            .strokeBorder(Color.accentColor, lineWidth: Self.ringWidth)
-                        }
-                    }
-                Text(theme.title)
-                    .font(.callout)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .lineLimit(1)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
