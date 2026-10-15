@@ -14,10 +14,7 @@ nonisolated extension PeekEntry: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let id = try container.decode(String.self, forKey: .id)
-        guard !id.isEmpty else {
-            throw DecodingError.dataCorruptedError(forKey: .id, in: container, debugDescription: "The id is empty.")
-        }
+        let id = try container.decodeID(forKey: .id)
         let response = try container.decodeIfPresent(PeekResponse.self, forKey: .response)
         let failure = try container.decodeIfPresent(PeekFailure.self, forKey: .failure)
         let completedAt = try container.decodeTimestampIfPresent(forKey: .completedAt)
@@ -28,7 +25,7 @@ nonisolated extension PeekEntry: Decodable {
             )
         }
         self.init(
-            id: PeekId(id),
+            id: id,
             request: try container.decode(PeekRequest.self, forKey: .request),
             startedAt: try container.decodeTimestamp(forKey: .startedAt),
             source: try container.decode(String.self, forKey: .source),
@@ -174,11 +171,14 @@ nonisolated extension PeekTimings: Decodable {
         case blocked, dns, connect, ssl, send, wait, receive
     }
 
+    private static let longestPhaseMilliseconds = 1e12
+
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         func duration(_ key: CodingKeys) throws -> Duration? {
-            try container.decodeIfPresent(Double.self, forKey: key)
-                .map { .microseconds(Int64(($0 * 1000).rounded())) }
+            guard let milliseconds = try container.decodeIfPresent(Double.self, forKey: key),
+                  abs(milliseconds) <= Self.longestPhaseMilliseconds else { return nil }
+            return .microseconds(Int64((milliseconds * 1000).rounded()))
         }
         self.init(
             blocked: try duration(.blocked),
@@ -263,6 +263,16 @@ private nonisolated extension SingleValueDecodingContainer {
             }
             return (pair[0], pair[1])
         }
+    }
+}
+
+nonisolated extension KeyedDecodingContainer {
+    func decodeID(forKey key: Key) throws -> PeekId {
+        let id = try decode(String.self, forKey: key)
+        guard !id.isEmpty else {
+            throw DecodingError.dataCorruptedError(forKey: key, in: self, debugDescription: "The id is empty.")
+        }
+        return PeekId(id)
     }
 }
 

@@ -157,7 +157,7 @@ nonisolated extension PeekRemoteFrame {
                 switch try container.decode(String.self, forKey: .op) {
                 case "add": frame = .entryAdded(try container.decode(PeekEntry.self, forKey: .entry))
                 case "update": frame = .entryUpdated(try container.decode(PeekEntry.self, forKey: .entry))
-                case "remove": frame = .entryRemoved(PeekId(try container.decode(String.self, forKey: .id)))
+                case "remove": frame = .entryRemoved(try container.decodeID(forKey: .id))
                 case let op:
                     throw DecodingError.dataCorruptedError(forKey: .op, in: container, debugDescription: "\(op) is not an entry operation")
                 }
@@ -174,7 +174,7 @@ nonisolated extension PeekRemoteFrame {
                 }
                 frame = .bodyRequest(
                     requestID: try container.decode(String.self, forKey: .requestId),
-                    entryID: PeekId(try container.decode(String.self, forKey: .id)),
+                    entryID: try container.decodeID(forKey: .id),
                     side: side
                 )
             case "bodyResponse":
