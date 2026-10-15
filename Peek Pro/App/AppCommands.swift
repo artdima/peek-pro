@@ -7,7 +7,7 @@ struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @AppStorage(DetailPlacement.storageKey) private var detailPlacement: DetailPlacement = .bottom
     /// Where the details go back to when shown again with ⇧⌘D.
-    @AppStorage("detailPlacement.lastVisible") private var lastVisiblePlacement: DetailPlacement = .bottom
+    @AppStorage(DetailPlacement.lastVisibleStorageKey) private var lastVisiblePlacement: DetailPlacement = .bottom
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {

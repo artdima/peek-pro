@@ -6,6 +6,7 @@ enum DetailPlacement: String, CaseIterable, Identifiable {
     case hidden
 
     static let storageKey = "detailPlacement"
+    static let lastVisibleStorageKey = "detailPlacement.lastVisible"
 
     var id: Self { self }
 
