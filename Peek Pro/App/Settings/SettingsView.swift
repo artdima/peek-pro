@@ -467,10 +467,18 @@ private struct DevicesSettings: View {
                     ForEach(model.store.pairedDevices.reversed()) { device in
                         PairedDeviceRow(device: device) { model.forgetDevice(device.id) }
                     }
-                    Button("Forget All", role: .destructive) { model.forgetAllDevices() }
                 }
             } header: {
-                Text("Paired Devices")
+                HStack {
+                    Text("Paired Devices")
+                    Spacer()
+                    if !model.store.pairedDevices.isEmpty {
+                        Button("Forget All", role: .destructive) { model.forgetAllDevices() }
+                            .buttonStyle(.borderless)
+                            .fontWeight(.regular)
+                            .foregroundStyle(.red)
+                    }
+                }
             } footer: {
                 Text("A forgotten device is disconnected and has to enter the code again.")
                     .foregroundStyle(.secondary)
@@ -484,21 +492,37 @@ private struct PairedDeviceRow: View {
     let onForget: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: device.platform.symbolName)
+                .font(.system(size: 15))
                 .foregroundStyle(.secondary)
-                .frame(width: 18)
-            VStack(alignment: .leading, spacing: 2) {
+                .frame(width: 28, height: 28)
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
                 Text(device.title)
-                Text("\(device.platform.title) · \(device.address) · last seen \(PeekFormat.relative(device.lastSeenAt))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text(device.platform.title)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    Text(device.address)
+                        .font(.system(.callout, design: .monospaced))
+                }
+                .foregroundStyle(.secondary)
             }
-            Spacer()
+            Spacer(minLength: 12)
+            Text(lastSeen)
+                .foregroundStyle(.secondary)
             Button("Forget", action: onForget)
-                .controlSize(.small)
         }
+        .padding(.vertical, 4)
         .help("Paired \(PeekFormat.dateTime(device.pairedAt))")
+    }
+
+    private var lastSeen: String {
+        let text = PeekFormat.relative(device.lastSeenAt)
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 }
 
