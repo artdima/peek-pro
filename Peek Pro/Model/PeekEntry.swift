@@ -60,6 +60,6 @@ nonisolated struct PeekEntry: Identifiable, Hashable, Sendable {
 
     var totalSize: Int? {
         let sizes = [requestSize, responseSize].compactMap(\.self)
-        return sizes.isEmpty ? nil : sizes.reduce(0, +)
+        return sizes.isEmpty ? nil : sizes.saturatingSum()
     }
 }

@@ -205,7 +205,7 @@ private struct TransferBlock: View {
 
     private var total: String {
         guard headers != nil || bodySize != nil else { return "—" }
-        return PeekFormat.bytes((headers ?? 0) + (bodySize ?? 0))
+        return PeekFormat.bytes([headers, bodySize].compactMap(\.self).saturatingSum())
     }
 }
 
