@@ -117,6 +117,17 @@ struct PeekEntryDecodingTests {
         #expect(e1?.timings == nil)
     }
 
+    @Test("reads a phase too long to be real as not reported, and keeps the rest")
+    func absurdTimings() throws {
+        let entry = try decode(#"""
+        {"id":"x","source":"dio","startedAt":"2026-09-10T12:00:00Z","timings":{"dns":12.5,"wait":1e19,"receive":-1e300},"request":{"method":"GET","url":"https://a.example/"}}
+        """#)
+        let timings = try #require(entry.timings)
+        #expect(timings.dns == .microseconds(12_500))
+        #expect(timings.wait == nil)
+        #expect(timings.receive == nil)
+    }
+
     @Test("reads redirects, failures and extra data")
     func details() throws {
         let all = try basic()

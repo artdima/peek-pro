@@ -90,6 +90,8 @@ struct PeekRemoteFrameTests {
         #"{"type":"synced"}"#,
         #"{"type":"entry","op":"move","id":"e1"}"#,
         #"{"type":"entry","op":"add"}"#,
+        #"{"type":"entry","op":"remove","id":""}"#,
+        #"{"type":"bodyRequest","requestId":"1","id":"","side":"response"}"#,
         #"{"type":"bodyRequest","requestId":"1","id":"e1","side":"both"}"#,
         #"{"type":"hello","protocolVersion":1,"sessionId":"s"}"#,
     ])

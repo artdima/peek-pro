@@ -146,6 +146,8 @@ struct PeekRemoteSessionsTests {
         remote.accept(channel)
         channel.receive(.ping)
         channel.receive(text: "not json")
+        channel.receive(text: #"{"type":"entry","op":"remove","id":""}"#)
+        channel.receive(text: #"{"type":"entry","op":"add","entry":{"id":"x","source":"dio","startedAt":"2026-09-10T12:00:00Z","timings":{"wait":1e19},"request":{"method":"GET","url":"https://a.example/"}}}"#)
         channel.receive(.synced(count: 3))
         #expect(channel.sent.isEmpty)
         #expect(hub.sessions.isEmpty)
