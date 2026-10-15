@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
 - **Settings.** A sidebar of pages — General, Appearance, Server, Pairing,
   Devices and Help — with a search field that finds the page a setting is on.
