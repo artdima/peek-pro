@@ -513,15 +513,41 @@ private struct HelpSettings: View {
     var body: some View {
         Form {
             Section {
-                Link("Connecting an App", destination: PeekProLinks.remoteGuide)
-                Link("Peek Pro on GitHub", destination: PeekProLinks.repository)
-                Link("Report an Issue…", destination: PeekProLinks.issues)
-                Link("Peek on GitHub", destination: PeekProLinks.peek)
+                Link(destination: PeekProLinks.remoteGuide) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Connecting an App")
+                                .fontWeight(.semibold)
+                            Text("Adding peek_remote, pairing, addresses for each kind of device and what to do when a device can't connect.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(PeekProLinks.remoteGuide.absoluteString)
+            } header: {
+                Text("Guide")
+            }
+
+            Section {
+                LinkRow(title: "Peek Pro on GitHub", detail: "Source & releases", destination: PeekProLinks.repository)
+                LinkRow(title: "Peek on GitHub", detail: "The Flutter library", destination: PeekProLinks.peek)
+                LinkRow(title: "Report an Issue…", detail: "Opens GitHub Issues", destination: PeekProLinks.issues)
             } header: {
                 Text("Links")
-            } footer: {
-                Text("The guide covers adding peek_remote, pairing, addresses for each kind of device and what to do when a device can't connect.")
-                    .foregroundStyle(.secondary)
             }
 
             Section("About") {
@@ -529,6 +555,29 @@ private struct HelpSettings: View {
                 LabeledContent("License", value: "MIT")
             }
         }
+    }
+}
+
+private struct LinkRow: View {
+    let title: String
+    let detail: String
+    let destination: URL
+
+    var body: some View {
+        Link(destination: destination) {
+            HStack(spacing: 8) {
+                Text(title)
+                Spacer(minLength: 12)
+                Text(detail)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(destination.absoluteString)
     }
 }
 
