@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Settings as a sidebar of pages, the way System Settings lays them out.
@@ -70,10 +71,24 @@ struct SettingsView: View {
             }
         }
         .id(colorScheme)
+        .background(UnifiedToolbarStyle())
         .frame(minWidth: 720, idealWidth: 820, maxWidth: .infinity, minHeight: 480, idealHeight: 580, maxHeight: .infinity)
         .onAppear { history = SettingsHistory(start: page) }
         // A step back lands on the page the history already holds, so this records only new pages.
         .onChange(of: selectedPage) { history.visit(page) }
+    }
+}
+
+/// The Settings scene gives its window a preferences toolbar, which centres the title over the buttons.
+private struct UnifiedToolbarStyle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { ToolbarStyleView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class ToolbarStyleView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.toolbarStyle = .unified
+        }
     }
 }
 
@@ -142,26 +157,34 @@ private struct AppearanceSettings: View {
     var body: some View {
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 11) {
-                    Text("App Theme")
-                    AppThemePicker(selection: $theme)
-                        .accessibilityLabel("App Theme")
-                }
+                AppThemePicker(selection: $theme)
+                    .accessibilityLabel("App Theme")
+            } header: {
+                Text("App Theme")
             }
 
             Section {
-                LabeledContent("Font size") {
-                    HStack {
-                        Slider(value: $fontSize, in: 10...18, step: 1)
-                            .frame(width: 180)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Text("Font size")
+                        Spacer(minLength: 16)
+                        Text("A")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        Slider(value: wholeFontSize, in: 10...18)
+                            .labelsHidden()
+                            .frame(width: 160)
+                            .accessibilityLabel("Font size")
+                        Text("A")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
                         Text("\(Int(fontSize)) pt")
                             .monospacedDigit()
                             .frame(width: 40, alignment: .trailing)
+                            .padding(.leading, 10)
                     }
+                    BodyPreview(fontSize: fontSize, wraps: wraps)
                 }
-                Text("\"name\": \"Trail Runner\", \"price\": 129.00")
-                    .font(.system(size: fontSize, design: .monospaced))
-                    .foregroundStyle(.secondary)
                 Picker("Open JSON as", selection: $jsonMode) {
                     ForEach(JSONViewMode.allCases) { Text($0.title).tag($0) }
                 }
@@ -174,6 +197,60 @@ private struct AppearanceSettings: View {
             }
         }
         .onChange(of: theme) { theme.apply() }
+    }
+
+    private var wholeFontSize: Binding<Double> {
+        Binding(get: { fontSize }, set: { fontSize = $0.rounded() })
+    }
+}
+
+private struct BodyPreview: View {
+    let fontSize: Double
+    let wraps: Bool
+
+    private static let sample = """
+        {
+          "name": "Trail Runner",
+          "price": 129.00,
+          "tags": ["running", "trail", "lightweight", "waterproof"]
+        }
+        """
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+    }
+
+    var body: some View {
+        Group {
+            if wraps {
+                text
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    text.fixedSize()
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(nsColor: .textBackgroundColor), in: shape)
+        .overlay {
+            shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        }
+    }
+
+    private var text: some View {
+        Text(highlighted)
+            .font(.system(size: fontSize, design: .monospaced))
+            .lineSpacing(2)
+    }
+
+    private var highlighted: AttributedString {
+        var result = AttributedString(Self.sample)
+        for token in JSONHighlighter.tokens(in: Self.sample) {
+            guard let range = Range(token.range, in: result) else { continue }
+            result[range].foregroundColor = Color(nsColor: CodeTextStyle.color(for: token.kind))
+        }
+        return result
     }
 }
 
