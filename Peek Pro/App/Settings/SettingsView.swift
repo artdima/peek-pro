@@ -239,10 +239,6 @@ private struct BodyPreview: View {
         }
         """
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-    }
-
     var body: some View {
         Group {
             if wraps {
@@ -255,10 +251,7 @@ private struct BodyPreview: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color(nsColor: .textBackgroundColor), in: shape)
-        .overlay {
-            shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
-        }
+        .settingsWell(cornerRadius: 8)
     }
 
     private var text: some View {
@@ -289,44 +282,76 @@ private struct ServerSettings: View {
     var body: some View {
         Form {
             Section {
-                TextField("Port", value: $port, format: .number.grouping(.never))
-                    .onSubmit {
-                        port = min(max(port, 1_024), 65_535)
-                        model.applyServerSettings()
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Port")
+                        Text("Devices connect to this port")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
-                LabeledContent("Status") {
+                    Spacer(minLength: 12)
                     HStack(spacing: 6) {
                         Circle()
                             .fill(server.status == .listening ? Color(.statusSuccess) : .orange)
                             .frame(width: 7, height: 7)
                         Text(server.status == .listening ? "Listening" : "Port is in use")
+                            .foregroundStyle(.secondary)
                     }
+                    TextField("Port", value: $port, format: .number.grouping(.never))
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.trailing)
+                        .monospacedDigit()
+                        .padding(.horizontal, 8)
+                        .frame(width: 70, height: 24)
+                        .settingsWell()
+                        .onSubmit {
+                            port = min(max(port, 1_024), 65_535)
+                            model.applyServerSettings()
+                        }
                 }
-                LabeledContent("Addresses") {
-                    VStack(alignment: .trailing, spacing: 2) {
+                .padding(.vertical, 2)
+                LabeledContent(server.addresses.count > 1 ? "Addresses" : "Address") {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        if server.addresses.isEmpty {
+                            Text("—")
+                                .foregroundStyle(.secondary)
+                        }
                         ForEach(server.addresses, id: \.self) { address in
-                            Text("\(address):\(String(server.port))")
-                                .monospaced()
-                                .textSelection(.enabled)
+                            CopyableField(value: "\(address):\(String(server.port))")
                         }
                     }
                 }
             } header: {
                 Text("Server")
             } footer: {
-                Text("Devices connect to this port. Changing it disconnects them until they use the new one.")
+                Text("Changing the port disconnects devices until they use the new one.")
                     .foregroundStyle(.secondary)
             }
 
             Section {
                 Toggle("Advertise on the local network", isOn: $bonjourEnabled)
                     .onChange(of: bonjourEnabled) { model.applyServerSettings() }
-                TextField("Name", text: $bonjourName, prompt: Text(PeekServerState.defaultBonjourName))
-                    .disabled(!bonjourEnabled)
-                    .onSubmit { model.applyServerSettings() }
-                if let name = server.bonjourName {
-                    LabeledContent("Advertised as", value: name)
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Name")
+                        if let name = server.bonjourName {
+                            Text("Advertised as \(name)")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 12)
+                    TextField("Name", text: $bonjourName, prompt: Text(PeekServerState.defaultBonjourName))
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 8)
+                        .frame(width: 160, height: 24)
+                        .settingsWell()
+                        .disabled(!bonjourEnabled)
+                        .onSubmit { model.applyServerSettings() }
                 }
+                .padding(.vertical, 2)
             } header: {
                 Text("Bonjour")
             } footer: {
@@ -388,7 +413,7 @@ private struct PairingSettings: View {
                 .onChange(of: tokenPolicy) { model.store.applyTokenPolicy() }
                 LabeledContent("Current") {
                     HStack(spacing: 12) {
-                        TokenField(token: server.token)
+                        CopyableField(value: server.token)
                         Button("Regenerate") { model.store.regenerateToken() }
                     }
                 }
@@ -402,29 +427,30 @@ private struct PairingSettings: View {
     }
 }
 
-private struct TokenField: View {
-    let token: String
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-    }
+private struct CopyableField: View {
+    let value: String
 
     var body: some View {
         HStack(spacing: 0) {
-            Text(token)
+            Text(value)
                 .monospaced()
                 .textSelection(.enabled)
                 .padding(.horizontal, 10)
             Divider()
-            CopyButton(text: token)
+            CopyButton(text: value)
                 .padding(.horizontal, 6)
         }
         .fixedSize(horizontal: true, vertical: false)
         .frame(height: 24)
-        .background(Color(nsColor: .textBackgroundColor), in: shape)
-        .overlay {
-            shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
-        }
+        .settingsWell()
+    }
+}
+
+private extension View {
+    func settingsWell(cornerRadius: CGFloat = 6) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return background(Color(nsColor: .textBackgroundColor), in: shape)
+            .overlay { shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5) }
     }
 }
 
