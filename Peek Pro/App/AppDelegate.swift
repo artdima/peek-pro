@@ -10,6 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel(servesDevices: true)
     #endif
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        AppTheme.current.apply()
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         model.open(urls)
     }

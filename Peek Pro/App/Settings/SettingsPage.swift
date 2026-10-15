@@ -56,7 +56,7 @@ nonisolated enum SettingsPage: String, CaseIterable, Identifiable {
     var keywords: [String] {
         switch self {
         case .general: ["requests", "table", "list", "details", "layout"]
-        case .appearance: ["font", "size", "json", "tree", "raw", "wrap", "bodies"]
+        case .appearance: ["theme", "dark", "light", "system", "color", "font", "size", "json", "tree", "raw", "wrap", "bodies"]
         case .server: ["port", "address", "listening", "bonjour", "network", "advertise"]
         case .pairing: ["code", "token", "access", "ci", "regenerate"]
         case .devices: ["paired", "forget", "iphone", "android", "simulator"]
