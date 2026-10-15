@@ -4,14 +4,15 @@ struct AppThemePicker: View {
     @Binding var selection: AppTheme
 
     var body: some View {
-        HStack(spacing: 13) {
+        HStack(spacing: 0) {
             ForEach(AppTheme.allCases) { theme in
                 AppThemeOption(theme: theme, isSelected: theme == selection) {
                     selection = theme
                 }
+                .frame(maxWidth: .infinity)
             }
         }
-        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
         .accessibilityElement(children: .contain)
     }
 }
@@ -21,36 +22,30 @@ private struct AppThemeOption: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-    }
+    private static let ringWidth: CGFloat = 2
+    private static let ringGap: CGFloat = 2
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            VStack(spacing: 7) {
                 AppThemeThumbnail(theme: theme)
-                Text(theme.title)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .opacity(isSelected ? 1 : 0)
-                    .accessibilityHidden(true)
-            }
-            .padding(.leading, 6)
-            .padding(.trailing, 8)
-            .padding(.vertical, 3.5)
-            .frame(maxWidth: 171.5)
-            .background {
-                if isSelected {
-                    ZStack {
-                        shape.fill(Color.accentColor.opacity(0.08))
-                        shape.strokeBorder(Color.accentColor, lineWidth: 1)
+                    .padding(Self.ringWidth + Self.ringGap)
+                    .overlay {
+                        if isSelected {
+                            RoundedRectangle(
+                                cornerRadius: AppThemeThumbnail.cornerRadius + Self.ringWidth + Self.ringGap,
+                                style: .continuous
+                            )
+                            .strokeBorder(Color.accentColor, lineWidth: Self.ringWidth)
+                        }
                     }
-                }
+                Text(theme.title)
+                    .font(.callout)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
             }
-            .contentShape(shape)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -60,23 +55,24 @@ private struct AppThemeOption: View {
 private struct AppThemeThumbnail: View {
     let theme: AppTheme
 
-    private static let size = CGSize(width: 46.5, height: 32.5)
+    static let cornerRadius: CGFloat = 5
+    private static let size = CGSize(width: 92, height: 57)
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             backdrop
-            VStack(alignment: .leading, spacing: 4.75) {
+            VStack(alignment: .leading, spacing: 9.5) {
                 WindowButtons()
                 if let palette {
                     SampleResponse(palette: palette)
                 }
             }
-            .padding(3.75)
+            .padding(7.5)
         }
         .frame(width: Self.size.width, height: Self.size.height)
-        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
+            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
         }
         .accessibilityHidden(true)
@@ -113,7 +109,7 @@ private struct AppThemeThumbnail: View {
 
 private struct WindowButtons: View {
     var body: some View {
-        HStack(spacing: 2.75) {
+        HStack(spacing: 5.5) {
             dot(ThumbnailColor.close)
             dot(ThumbnailColor.minimize)
             dot(ThumbnailColor.zoom)
@@ -123,7 +119,7 @@ private struct WindowButtons: View {
     private func dot(_ color: Color) -> some View {
         Circle()
             .fill(color)
-            .frame(width: 4.5, height: 4.5)
+            .frame(width: 9, height: 9)
     }
 }
 
@@ -136,7 +132,7 @@ private struct SampleResponse: View {
             line("Vary:", palette.name, " Origin", palette.value)
             line("Connection:", palette.name, " close", palette.value)
         }
-        .font(.system(size: 3.5, design: .monospaced))
+        .font(.system(size: 7, design: .monospaced))
         .fixedSize()
     }
 
@@ -145,7 +141,7 @@ private struct SampleResponse: View {
             Text(verbatim: lead).foregroundStyle(leadColor)
             Text(verbatim: rest).foregroundStyle(restColor)
         }
-        .frame(height: 4.5)
+        .frame(height: 9)
     }
 }
 
@@ -190,7 +186,7 @@ private extension Color {
 }
 
 #Preview {
-    @Previewable @State var theme = AppTheme.dark
+    @Previewable @State var theme = AppTheme.system
     AppThemePicker(selection: $theme)
         .padding(20)
         .frame(width: 600)
