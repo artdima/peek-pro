@@ -4,10 +4,19 @@ import SwiftUI
 struct CopyButton: View {
     let text: String
     var title = "Copy"
+    var isBordered = false
 
     @State private var didCopy = false
 
     var body: some View {
+        if isBordered {
+            button.buttonStyle(.bordered)
+        } else {
+            button.buttonStyle(.borderless)
+        }
+    }
+
+    private var button: some View {
         Button {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
@@ -21,7 +30,6 @@ struct CopyButton: View {
                 .contentTransition(.symbolEffect(.replace))
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(.borderless)
         .help(title)
     }
 }

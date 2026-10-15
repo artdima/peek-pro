@@ -324,10 +324,33 @@ private struct PairingSettings: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Code") {
-                    PairingCodeView(code: server.pairingCode, isLarge: false) { model.newPairingCode() }
-                        .frame(maxWidth: 260)
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Code")
+                        Text("Expires in \(server.pairingCode.expiresAt, style: .timer)")
+                            .font(.callout)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 12)
+                    Text(server.pairingCode.digits)
+                        .font(.system(size: 26, weight: .bold, design: .monospaced))
+                        .tracking(4)
+                        .textSelection(.enabled)
+                        .accessibilityLabel("Pairing code \(server.pairingCode.digits)")
+                    HStack(spacing: 6) {
+                        CopyButton(text: server.pairingCode.digits, isBordered: true)
+                        Button { model.newPairingCode() } label: {
+                            Label("New Code", systemImage: "arrow.clockwise")
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.bordered)
+                        .help("New code — the old one stops working")
+                    }
+                    .buttonBorderShape(.roundedRectangle)
+                    .padding(.leading, 4)
                 }
+                .padding(.vertical, 4)
             } header: {
                 Text("Pairing Code")
             } footer: {
@@ -341,11 +364,8 @@ private struct PairingSettings: View {
                 }
                 .onChange(of: tokenPolicy) { model.store.applyTokenPolicy() }
                 LabeledContent("Current") {
-                    HStack(spacing: 6) {
-                        Text(server.token)
-                            .monospaced()
-                            .textSelection(.enabled)
-                        CopyButton(text: server.token)
+                    HStack(spacing: 12) {
+                        TokenField(token: server.token)
                         Button("Regenerate") { model.store.regenerateToken() }
                     }
                 }
@@ -355,6 +375,32 @@ private struct PairingSettings: View {
                 Text("For apps that have the token written in code, such as in CI, where nobody types. A new token refuses apps that still use the old one.")
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+private struct TokenField: View {
+    let token: String
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(token)
+                .monospaced()
+                .textSelection(.enabled)
+                .padding(.horizontal, 10)
+            Divider()
+            CopyButton(text: token)
+                .padding(.horizontal, 6)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(height: 24)
+        .background(Color(nsColor: .textBackgroundColor), in: shape)
+        .overlay {
+            shape.strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
         }
     }
 }
