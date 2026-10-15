@@ -77,7 +77,7 @@ struct ConsoleListRow: View {
             }
             .font(.callout)
             Text(attributedURL)
-                .foregroundStyle(entry.isError ? Color(.statusFailure) : Color.primary)
+                .statusForeground(entry.isError ? Color(.statusFailure) : nil)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }

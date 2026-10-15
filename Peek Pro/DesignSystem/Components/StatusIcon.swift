@@ -21,6 +21,21 @@ struct StatusLabel: View {
     var body: some View {
         Text(entry.statusTitle)
             .fontWeight(.semibold)
-            .foregroundStyle(entry.tint)
+            .statusForeground(entry.tint)
+    }
+}
+
+private struct StatusForeground: ViewModifier {
+    let color: Color?
+    @Environment(\.backgroundProminence) private var prominence
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(prominence == .increased ? AnyShapeStyle(.primary) : AnyShapeStyle(color ?? .primary))
+    }
+}
+
+extension View {
+    func statusForeground(_ color: Color?) -> some View {
+        modifier(StatusForeground(color: color))
     }
 }

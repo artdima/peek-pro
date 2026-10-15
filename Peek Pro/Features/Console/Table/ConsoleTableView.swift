@@ -132,7 +132,7 @@ private struct ErrorTintedText: View {
 
     var body: some View {
         Text(text)
-            .foregroundStyle(entry.isError ? Color(.statusFailure) : Color.primary)
+            .statusForeground(entry.isError ? Color(.statusFailure) : nil)
     }
 }
 
@@ -142,13 +142,14 @@ private struct CodeCell: View {
     var body: some View {
         Text(entry.statusCode.map(String.init) ?? "—")
             .monospacedDigit()
-            .foregroundStyle(entry.isError ? Color(.statusFailure) : Color.primary)
+            .statusForeground(entry.isError ? Color(.statusFailure) : nil)
     }
 }
 
 private struct URLCell: View {
     let entry: PeekEntry
     @Environment(\.searchHighlight) private var highlight
+    @Environment(\.backgroundProminence) private var prominence
 
     var body: some View {
         Text(attributedURL)
@@ -162,8 +163,10 @@ private struct URLCell: View {
         var origin = AttributedString("\(request.uri.scheme ?? "https")://\(request.host)")
         var rest = AttributedString(request.path + (request.query.map { "?\($0)" } ?? ""))
         if entry.isError {
-            origin.foregroundColor = Color(.statusFailure)
-            rest.foregroundColor = Color(.statusFailure)
+            if prominence != .increased {
+                origin.foregroundColor = Color(.statusFailure)
+                rest.foregroundColor = Color(.statusFailure)
+            }
         } else {
             origin.foregroundColor = Color.secondary
         }
@@ -183,7 +186,7 @@ private struct DurationCell: View {
         } else {
             Text(entry.duration.map { PeekFormat.duration($0) } ?? "—")
                 .monospacedDigit()
-                .foregroundStyle(entry.isSlow ? Color.orange : Color.primary)
+                .statusForeground(entry.isSlow ? .orange : nil)
         }
     }
 }

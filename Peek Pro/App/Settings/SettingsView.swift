@@ -5,6 +5,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.settingsPage) private var selectedPage = SettingsPage.general.rawValue
     @State private var history = SettingsHistory(start: .general)
     @State private var query = ""
+    @Environment(\.colorScheme) private var colorScheme
 
     private var page: SettingsPage { SettingsPage.stored(selectedPage) }
 
@@ -68,6 +69,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .id(colorScheme)
         .frame(minWidth: 720, idealWidth: 820, maxWidth: .infinity, minHeight: 480, idealHeight: 580, maxHeight: .infinity)
         .onAppear { history = SettingsHistory(start: page) }
         // A step back lands on the page the history already holds, so this records only new pages.
