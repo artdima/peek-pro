@@ -39,12 +39,12 @@ private struct DetailPlacementThumbnail: View {
                 if placement == .right {
                     rows([0.28, 0.40, 0.33, 0.37].map { $0 * width })
                     panel
-                        .frame(width: width * 0.47, height: height - Self.inset * 2)
+                        .frame(width: width * 0.47, height: max(0, height - Self.inset * 2))
                         .offset(x: width * 0.51, y: Self.inset)
                 } else {
                     rows([0.57, 0.81, 0.67, 0.75].map { $0 * width })
                     panel
-                        .frame(width: width - Self.inset * 2, height: height * 0.4)
+                        .frame(width: max(0, width - Self.inset * 2), height: height * 0.4)
                         .offset(x: Self.inset, y: height * 0.52)
                 }
             }
