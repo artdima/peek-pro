@@ -91,7 +91,7 @@ struct InfoPanel: View {
 
     private func requestRows(_ entries: [PeekEntry]) -> [InfoRow] {
         let sources = Set(entries.map(\.source)).sorted().joined(separator: ", ")
-        let bytes = entries.reduce(0) { $0 + ($1.totalSize ?? 0) }
+        let bytes = entries.compactMap(\.totalSize).saturatingSum()
         var rows = [
             InfoRow(title: "Count", value: entries.count.formatted()),
             InfoRow(title: "Pinned", value: entries.filter(\.isPinned).count.formatted()),

@@ -137,7 +137,7 @@ private struct MultipleSelectionView: View {
 
     private var summary: String {
         let errors = entries.filter(\.isError).count
-        let bytes = entries.reduce(0) { $0 + ($1.totalSize ?? 0) }
+        let bytes = entries.compactMap(\.totalSize).saturatingSum()
         return "\(errors) with errors · \(PeekFormat.bytes(bytes)) in total"
     }
 }

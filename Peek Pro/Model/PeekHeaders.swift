@@ -53,7 +53,11 @@ nonisolated struct PeekHeaders: Hashable, Sendable, ExpressibleByDictionaryLiter
     }
 
     var contentType: String? { self["content-type"] }
-    var contentLength: Int? { values(of: "content-length").first.flatMap(Int.init) }
+    var contentLength: Int? {
+        guard let value = values(of: "content-length").first, !value.isEmpty,
+              value.utf8.allSatisfy({ (UInt8(ascii: "0")...UInt8(ascii: "9")).contains($0) }) else { return nil }
+        return Int(value)
+    }
 
     var cookies: [PeekCookie] {
         values(of: "cookie").flatMap(PeekCookie.parseCookieHeader)

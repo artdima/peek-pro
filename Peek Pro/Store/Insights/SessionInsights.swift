@@ -86,10 +86,12 @@ nonisolated struct SessionInsights: Sendable {
         median = Self.percentile(0.5, of: durations)
         p95 = Self.percentile(0.95, of: durations)
 
-        sentBytes = entries.reduce(0) { $0 + $1.request.headers.byteCount + ($1.requestSize ?? 0) }
-        receivedBytes = entries.reduce(0) { total, entry in
-            total + (entry.response.map { $0.headers.byteCount + ($0.contentLength ?? 0) } ?? 0)
-        }
+        sentBytes = entries.lazy
+            .map { [$0.request.headers.byteCount, $0.requestSize ?? 0].saturatingSum() }
+            .saturatingSum()
+        receivedBytes = entries.lazy
+            .map { entry in entry.response.map { [$0.headers.byteCount, $0.contentLength ?? 0].saturatingSum() } ?? 0 }
+            .saturatingSum()
 
         var sliceCounts: [StatusSlice: Int] = [:]
         for entry in entries {
