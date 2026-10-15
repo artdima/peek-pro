@@ -132,12 +132,21 @@ private struct GeneralSettings: View {
 }
 
 private struct AppearanceSettings: View {
+    @AppStorage(SettingsKey.appTheme) private var theme: AppTheme = .system
     @AppStorage(SettingsKey.bodyFontSize) private var fontSize = 12.0
     @AppStorage(SettingsKey.jsonMode) private var jsonMode: JSONViewMode = .raw
     @AppStorage(SettingsKey.wraps) private var wraps = false
 
     var body: some View {
         Form {
+            Section {
+                VStack(alignment: .leading, spacing: 11) {
+                    Text("App Theme")
+                    AppThemePicker(selection: $theme)
+                        .accessibilityLabel("App Theme")
+                }
+            }
+
             Section {
                 LabeledContent("Font size") {
                     HStack {
@@ -162,6 +171,7 @@ private struct AppearanceSettings: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .onChange(of: theme) { theme.apply() }
     }
 }
 

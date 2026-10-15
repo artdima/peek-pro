@@ -19,6 +19,8 @@ struct SettingsPagesTests {
         #expect(SettingsPage.matching("   ") == SettingsPage.allCases)
         #expect(SettingsPage.matching("port") == [.server])
         #expect(SettingsPage.matching("FONT") == [.appearance])
+        #expect(SettingsPage.matching("Dark") == [.appearance])
+        #expect(SettingsPage.matching("theme") == [.appearance])
         #expect(SettingsPage.matching("token") == [.pairing])
         #expect(SettingsPage.matching("GitHub") == [.help])
         #expect(SettingsPage.matching("pair") == [.pairing, .devices])

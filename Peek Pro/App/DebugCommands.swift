@@ -1,8 +1,9 @@
-import AppKit
 import SwiftUI
 
 struct DebugCommands: Commands {
     let model: AppModel
+
+    @AppStorage(SettingsKey.appTheme) private var theme: AppTheme = .system
 
     var body: some Commands {
         #if DEBUG
@@ -18,47 +19,16 @@ struct DebugCommands: Commands {
             }
             Divider()
             Picker("Appearance", selection: Binding(
-                get: { DebugAppearance.current },
-                set: { $0.apply() }
+                get: { theme },
+                set: { theme = $0; $0.apply() }
             )) {
-                ForEach(DebugAppearance.allCases) { appearance in
-                    Text(appearance.title).tag(appearance)
+                ForEach(AppTheme.allCases) { option in
+                    Text(option.title).tag(option)
                 }
             }
         }
         #else
         EmptyCommands()
         #endif
-    }
-}
-
-enum DebugAppearance: String, CaseIterable, Identifiable {
-    case system
-    case light
-    case dark
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .system: "System"
-        case .light: "Light"
-        case .dark: "Dark"
-        }
-    }
-
-    static var current: DebugAppearance {
-        let name = NSApp.appearance?.name
-        if name == .aqua { return .light }
-        if name == .darkAqua { return .dark }
-        return .system
-    }
-
-    func apply() {
-        switch self {
-        case .system: NSApp.appearance = nil
-        case .light: NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
-        }
     }
 }
