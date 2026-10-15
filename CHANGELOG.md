@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Settings.** A sidebar of pages — General, Appearance, Server, Pairing,
+  Devices and Help — with a search field that finds the page a setting is on.
+- **App theme.** Peek Pro follows the system or stays light or dark, under
+  Settings → Appearance.
+- **Light mode.** The Settings window keeps its title, and a selected call's
+  status color no longer hides its text.
+- **Fixes.** A malformed message from the network, or such a `.peek` file, no
+  longer crashes Peek Pro, nor does a call with an oversized `Content-Length`.
 - **Window menu.** A Peek Pro item (⌘0) brings the main window back after it
   has been closed.
 
